@@ -166,15 +166,17 @@ function normalizeMessageId(message_id) {
     const id = Number(message_id);
     return Number.isFinite(id) ? id : message_id;
 }
-function extractReplyText(raw) {
-    if (!raw || typeof raw !== 'string')
-        return '';
+function stripThinkAndComments(raw) {
     let t = raw;
     t = t.replace(/<!--[\s\S]*?-->/g, '');
     t = t.replace(/<think[^>]*>[\s\S]*?<\/think>/gi, '');
     t = t.replace(/<redacted_reasoning[^>]*>[\s\S]*?<\/redacted_reasoning>/gi, '');
-    t = t.replace(/<[^>]+>/g, '');
     return t.trim();
+}
+function extractReplyText(raw) {
+    if (!raw || typeof raw !== 'string')
+        return '';
+    return stripThinkAndComments(raw).replace(/<[^>]+>/g, '').trim();
 }
 function estimateTokens(text) {
     const t = extractReplyText(text);
@@ -199,21 +201,59 @@ function estimateTokens(text) {
     }
     return Math.ceil(tokens);
 }
+/** 去掉 think 后原文仍较长：多为 HTML 状态栏，不应按「空回」处理 */
+function hasSubstantialRawContent(raw) {
+    const remain = stripThinkAndComments(raw);
+    if (remain.length >= 48)
+        return true;
+    return estimateTokens(raw) >= 40;
+}
 function analyzeReply(text, minTokens, truncatedIfNoGreaterThanEnd) {
     const visible = extractReplyText(text);
     const tokens = estimateTokens(text);
     const threshold = Number(minTokens) > 0 ? Number(minTokens) : defaultSettings.minTokens;
-    if (!visible)
-        return { shouldNotify: true, reason: '空回', tokens };
+    if (!visible) {
+        if (hasSubstantialRawContent(text)) {
+            /* 有实质内容但去标签后为空，继续走截断规则 */
+        }
+        else {
+            return { shouldNotify: true, reason: '空回', tokens };
+        }
+    }
     if (/^[.\s…。·\-_*#?？!！,，;；:：'""`~～^]+$/u.test(visible)) {
         return { shouldNotify: true, reason: '无效短回复', tokens };
     }
     if (truncatedIfNoGreaterThanEnd && !text.trimEnd().endsWith('>')) {
         return { shouldNotify: true, reason: '截断(未以>结尾)', tokens };
     }
-    if (tokens < threshold)
+    if (tokens < threshold) {
+        // HTML 状态栏等：原文很长但去标签后 token 为 0，不算过短截断
+        if (!visible && hasSubstantialRawContent(text)) {
+            return { shouldNotify: false, reason: '', tokens };
+        }
         return { shouldNotify: true, reason: '截断(过短)', tokens };
+    }
     return { shouldNotify: false, reason: '', tokens };
+}
+let generationActive = false;
+/** 生成未结束前不判定，避免流式中途误判空回并锁死 notifiedIds */
+function bindGenerationGate() {
+    if (tavern_events.GENERATION_STARTED) {
+        eventOn(tavern_events.GENERATION_STARTED, () => {
+            generationActive = true;
+        });
+    }
+    if (tavern_events.GENERATION_STOPPED) {
+        eventOn(tavern_events.GENERATION_STOPPED, () => {
+            generationActive = false;
+        });
+    }
+    if (tavern_events.GENERATION_ENDED) {
+        eventOn(tavern_events.GENERATION_ENDED, (message_id) => {
+            generationActive = false;
+            scheduleCheck(message_id, 'generation_ended');
+        });
+    }
 }
 let userStopIgnoreUntil = 0;
 function markUserStopped(reason) {
@@ -258,6 +298,10 @@ async function checkAndNotify(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim())
         return;
+    if (generationActive && !trigger.includes('generation_ended')) {
+        scheduleCheck(id, 'waitGen');
+        return;
+    }
     if (notifiedIds.has(id))
         return;
     try {
@@ -272,8 +316,10 @@ async function checkAndNotify(message_id, trigger) {
         const body = getMessageBody(msg);
         const truncGt = s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd;
         const analysis = analyzeReply(body, s.minTokens, truncGt);
-        console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}` +
-            ` reason=${analysis.reason || '-'} truncGt=${truncGt} minTokens=${s.minTokens}`);
+        const visibleLen = extractReplyText(body).length;
+        console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
+            ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
+            ` truncGt=${truncGt} minTokens=${s.minTokens}`);
         if (!analysis.shouldNotify)
             return;
         notifiedIds.add(msg.message_id ?? id);
@@ -287,10 +333,11 @@ function scheduleCheck(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     if (checkTimers.has(id))
         clearTimeout(checkTimers.get(id));
+    const delay = trigger.includes('generation_ended') ? 400 : 1000;
     checkTimers.set(id, setTimeout(() => {
         checkTimers.delete(id);
         void checkAndNotify(id, trigger);
-    }, 800));
+    }, delay));
 }
 
 ;// ./src/酒馆助手/Bark空回通知/panel.ts
@@ -503,6 +550,7 @@ function teardownUI() {
 
 
 bindStopDetector();
+bindGenerationGate();
 eventOn(tavern_events.MESSAGE_RECEIVED, (message_id, type) => {
     if (type === 'append')
         return;
@@ -510,9 +558,6 @@ eventOn(tavern_events.MESSAGE_RECEIVED, (message_id, type) => {
 });
 if (tavern_events.MESSAGE_UPDATED) {
     eventOn(tavern_events.MESSAGE_UPDATED, (message_id) => scheduleCheck(message_id, 'updated'));
-}
-if (tavern_events.GENERATION_ENDED) {
-    eventOn(tavern_events.GENERATION_ENDED, (message_id) => scheduleCheck(message_id, 'generation_ended'));
 }
 eventOn(getButtonEvent('Bark通知设置'), () => focusExtensionsSettings());
 $(() => {

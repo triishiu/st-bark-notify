@@ -25,14 +25,17 @@ function normalizeMessageId(message_id: number | string): number | string {
   return Number.isFinite(id) ? id : message_id;
 }
 
-function extractReplyText(raw: string): string {
-  if (!raw || typeof raw !== 'string') return '';
+function stripThinkAndComments(raw: string): string {
   let t = raw;
   t = t.replace(/<!--[\s\S]*?-->/g, '');
   t = t.replace(/<think[^>]*>[\s\S]*?<\/think>/gi, '');
   t = t.replace(/<redacted_reasoning[^>]*>[\s\S]*?<\/redacted_reasoning>/gi, '');
-  t = t.replace(/<[^>]+>/g, '');
   return t.trim();
+}
+
+function extractReplyText(raw: string): string {
+  if (!raw || typeof raw !== 'string') return '';
+  return stripThinkAndComments(raw).replace(/<[^>]+>/g, '').trim();
 }
 
 function estimateTokens(text: string): number {
@@ -54,6 +57,13 @@ function estimateTokens(text: string): number {
   return Math.ceil(tokens);
 }
 
+/** 去掉 think 后原文仍较长：多为 HTML 状态栏，不应按「空回」处理 */
+function hasSubstantialRawContent(raw: string): boolean {
+  const remain = stripThinkAndComments(raw);
+  if (remain.length >= 48) return true;
+  return estimateTokens(raw) >= 40;
+}
+
 function analyzeReply(
   text: string,
   minTokens: number,
@@ -62,15 +72,49 @@ function analyzeReply(
   const visible = extractReplyText(text);
   const tokens = estimateTokens(text);
   const threshold = Number(minTokens) > 0 ? Number(minTokens) : defaultSettings.minTokens;
-  if (!visible) return { shouldNotify: true, reason: '空回', tokens };
+  if (!visible) {
+    if (hasSubstantialRawContent(text)) {
+      /* 有实质内容但去标签后为空，继续走截断规则 */
+    } else {
+      return { shouldNotify: true, reason: '空回', tokens };
+    }
+  }
   if (/^[.\s…。·\-_*#?？!！,，;；:：'""`~～^]+$/u.test(visible)) {
     return { shouldNotify: true, reason: '无效短回复', tokens };
   }
   if (truncatedIfNoGreaterThanEnd && !text.trimEnd().endsWith('>')) {
     return { shouldNotify: true, reason: '截断(未以>结尾)', tokens };
   }
-  if (tokens < threshold) return { shouldNotify: true, reason: '截断(过短)', tokens };
+  if (tokens < threshold) {
+    // HTML 状态栏等：原文很长但去标签后 token 为 0，不算过短截断
+    if (!visible && hasSubstantialRawContent(text)) {
+      return { shouldNotify: false, reason: '', tokens };
+    }
+    return { shouldNotify: true, reason: '截断(过短)', tokens };
+  }
   return { shouldNotify: false, reason: '', tokens };
+}
+
+let generationActive = false;
+
+/** 生成未结束前不判定，避免流式中途误判空回并锁死 notifiedIds */
+export function bindGenerationGate(): void {
+  if (tavern_events.GENERATION_STARTED) {
+    eventOn(tavern_events.GENERATION_STARTED, () => {
+      generationActive = true;
+    });
+  }
+  if (tavern_events.GENERATION_STOPPED) {
+    eventOn(tavern_events.GENERATION_STOPPED, () => {
+      generationActive = false;
+    });
+  }
+  if (tavern_events.GENERATION_ENDED) {
+    eventOn(tavern_events.GENERATION_ENDED, (message_id: number) => {
+      generationActive = false;
+      scheduleCheck(message_id, 'generation_ended');
+    });
+  }
 }
 
 let userStopIgnoreUntil = 0;
@@ -121,6 +165,10 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
   const s = loadSettings();
   const id = normalizeMessageId(message_id);
   if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim()) return;
+  if (generationActive && !trigger.includes('generation_ended')) {
+    scheduleCheck(id, 'waitGen');
+    return;
+  }
   if (notifiedIds.has(id)) return;
   try {
     let msg = getChatMessages(id as number)[0];
@@ -132,9 +180,11 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     const body = getMessageBody(msg);
     const truncGt = s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd;
     const analysis = analyzeReply(body, s.minTokens, truncGt);
+    const visibleLen = extractReplyText(body).length;
     console.log(
-      `[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}` +
-        ` reason=${analysis.reason || '-'} truncGt=${truncGt} minTokens=${s.minTokens}`,
+      `[Bark通知] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
+        ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
+        ` truncGt=${truncGt} minTokens=${s.minTokens}`,
     );
     if (!analysis.shouldNotify) return;
     notifiedIds.add(msg.message_id ?? id);
@@ -147,11 +197,12 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
 export function scheduleCheck(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
   if (checkTimers.has(id)) clearTimeout(checkTimers.get(id)!);
+  const delay = trigger.includes('generation_ended') ? 400 : 1000;
   checkTimers.set(
     id,
     setTimeout(() => {
       checkTimers.delete(id);
       void checkAndNotify(id, trigger);
-    }, 800),
+    }, delay),
   );
 }
