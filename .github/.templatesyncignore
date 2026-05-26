@@ -2,3 +2,7 @@
 @types
 dist
 README.md
+src/酒馆助手/Bark空回通知
+Bark空回通知.json
+scripts
+.github/workflows/release.yaml

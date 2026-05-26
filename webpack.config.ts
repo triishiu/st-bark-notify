@@ -51,7 +51,7 @@ function common_path(lhs: string, rhs: string) {
 function glob_script_files() {
   const results: string[] = [];
 
-  fs.globSync(`src/**/index.{ts,tsx,js,jsx}`)
+  fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`)
     .filter(
       file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
     )
@@ -108,7 +108,7 @@ function watch_tavern_helper(compiler: webpack.Compiler) {
 
 let watcher: FSWatcher;
 const dump = () => {
-  exec('npm run dump', { cwd: import.meta.dirname });
+  exec('pnpm dump', { cwd: import.meta.dirname });
   console.info('\x1b[36m[schema_dump]\x1b[0m 已将所有 schema.ts 转换为 schema.json');
 };
 const dump_debounced = _.debounce(dump, 500, { leading: true, trailing: false });
@@ -487,7 +487,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     optimization: {
       minimize: argv.mode === 'production' && !keep_readable_dist,
       minimizer: [
-        argv.mode === 'production' && !keep_readable_dist
+        argv.mode === 'production'
           ? new TerserPlugin({
               terserOptions: { format: { quote_style: 1 }, mangle: { reserved: ['_', 'toastr', 'YAML', '$', 'z'] } },
             })

@@ -1,101 +1,38 @@
 # st-bark-notify
 
-在 [SillyTavern](https://github.com/SillyTavern/SillyTavern) 中配合 **[酒馆助手](https://n0vi028.github.io/JS-Slash-Runner-Doc/guide/关于酒馆助手/介绍.html)** 使用的脚本：当 AI 回复**空回**、**过短无效**或疑似**截断**时，通过 [Bark](https://github.com/Finb/Bark) 向 iOS 设备推送通知。
+基于 [StageDog/tavern_helper_template](https://github.com/StageDog/tavern_helper_template) 的酒馆助手项目仓库，内置脚本 **Bark 空回/截断通知**。
 
-## 功能
+环境准备、实时编写、jsDelivr 用法等请阅读官方教程：
 
-- 检测空回、无效短回复、截断（未以 `>` 结尾或过短等规则，见源码 `detection.ts`）
-- 手动停止生成后短时间内不误报
-- 扩展页配置 Bark Key、服务器、标题文案，并支持测试推送
+- [环境准备](https://stagedog.github.io/青空莉/工具经验/实时编写前端界面或脚本/环境准备/)
+- [模板 README 说明](https://github.com/StageDog/tavern_helper_template/blob/main/README.md)
 
-## 使用（只需导入，无需克隆仓库）
+## 本仓库脚本位置
 
-**下载导入文件（任选其一）：**
+| 用途 | 路径 |
+|------|------|
+| 源码 | `src/酒馆助手/Bark空回通知/`（`index.ts` 入口） |
+| 构建产物 | `dist/酒馆助手/Bark空回通知/index.js` |
+| 酒馆导入（CDN） | 根目录 [`Bark空回通知.json`](./Bark空回通知.json) |
+| 本地热重载导入 | [`初始模板/脚本/导入到酒馆中/Bark空回通知.json`](./初始模板/脚本/导入到酒馆中/Bark空回通知.json) |
 
-- [Releases](https://github.com/triishiu/st-bark-notify/releases/latest) → 下载 `bark-notify-import.json`
-- 或 [直接链接](https://raw.githubusercontent.com/triishiu/st-bark-notify/main/Bark空回通知.json)
+## 用户：安装脚本
 
-1. 酒馆 → **酒馆助手** → **脚本** → **导入**，选择下载的 JSON。
-3. 启用脚本 → **扩展** → **Bark 空回/截断通知** → 填写 Bark Key → **保存**。
+1. 下载 [Bark空回通知.json](https://raw.githubusercontent.com/triishiu/st-bark-notify/main/Bark空回通知.json) 或 [Releases](https://github.com/triishiu/st-bark-notify/releases/latest)
+2. 酒馆 → **酒馆助手** → **脚本** → **导入**
+3. **扩展** → **Bark 空回/截断通知** → 填写 Bark Key → **保存**
 
-JSON 里只有一行 `import`，实际脚本在仓库 **`dist/酒馆助手/Bark空回通知/index.js`**，由 jsDelivr 从 GitHub 拉取：
-
-```js
-import('https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js');
-```
-
-> 不要用 `testingcf.jsdelivr.net`：该镜像曾长期返回旧版（扩展页只有「启用」）。若仍像旧版：删掉重复 Bark 脚本 → 重新导入 JSON → Ctrl+F5。
-
----
-
-## 仓库里都有什么？
-
-本仓库是从「酒馆助手前端/脚本模板」精简而来，只保留 **Bark 通知** 这一条脚本，以及构建、类型定义所需的基础设施。
-
-```
-st-bark-notify/
-├── Bark空回通知.json          ← 给酒馆「导入」用（推荐下载这个）
-├── src/酒馆助手/Bark空回通知/      ← 源码（开发时改这里）
-│   ├── index.ts                  入口
-│   ├── detection.ts              空回/截断检测
-│   ├── send-bark.ts              推送请求
-│   ├── settings.ts               配置读写
-│   ├── panel.ts                  扩展页 UI
-│   └── constants.ts              常量
-├── dist/酒馆助手/Bark空回通知/     ← 构建产物（CDN / 酒馆真正加载的 JS）
-│   ├── index.js
-│   └── index.js.map              调试用，酒馆运行不依赖
-├── scripts/gen-import-json.mjs   生成根目录导入 JSON
-├── @types/                       酒馆助手 API 类型（仅开发用）
-├── webpack.config.ts 等          打包配置（仅开发用）
-└── package.json
-```
-
-### `src` 和 `dist` 是什么关系？
-
-| 目录 | 作用 | 要不要改 / 提交 |
-|------|------|------------------|
-| **`src/…`** | 可读的 TypeScript 源码，按模块拆分 | **改功能只改这里**；随 Git 提交 |
-| **`dist/…/index.js`** | `npm run build` 打出来的单文件 JS | **不要手改**；改完 `src` 后 build，再提交，供 CDN 拉取 |
-| **根目录 `Bark空回通知.json`** | 导入用（`import` 指向 dist CDN） | `npm run gen:import` 生成 |
-
-一句话：**你写 `src`，用户和 CDN 用 `dist/index.js`，导入酒馆用根目录 JSON（仅一份）。**
-
----
-
-## 开发
-
-### 环境
-
-- Node.js 18+（推荐 20+）
-- 本仓库使用 `npm`（`package-lock.json`）；若用 `pnpm` 需自行保证依赖可安装
-
-### 命令
+## 开发者
 
 ```bash
-npm install --legacy-peer-deps
-
-npm run build        # src → dist/酒馆助手/Bark空回通知/index.js
-npm run gen:import   # 同步根目录与 dist 下的导入 JSON（改 CDN 或脚本名后执行）
-npm run watch        # 监听 src 变更并热构建（需酒馆助手「允许监听」）
-npm run lint         # ESLint
+pnpm install
+pnpm run build    # 打包 src + 示例，并生成根目录 Bark空回通知.json
+pnpm run watch    # 监听构建（需酒馆助手「允许监听」+ 本地导入 JSON）
 ```
 
-**改完源码后的发布顺序：**
+修改 `src/酒馆助手/Bark空回通知/` 后 push 到 `main`，**bundle** 工作流会自动提交 `dist` 并打版本 tag。
 
-1. 编辑 `src/酒馆助手/Bark空回通知/`
-2. `npm run build`
-3. `npm run gen:import`（若改过仓库名、路径或 CDN 域名）
-4. 提交 `src`、`dist`、`Bark空回通知.json` 并 push 到 GitHub
-5. 等待 jsDelivr 刷新（通常数分钟）后，在酒馆重新导入或刷新脚本
-
-也可在 GitHub Actions 中手动运行 **bundle** workflow（会执行 `build` + `gen:import`）。
-
-### 修改 CDN 地址
-
-编辑 [`scripts/gen-import-json.mjs`](scripts/gen-import-json.mjs) 顶部的 `cdnUrl`，再运行 `npm run gen:import`。
-
----
+GitHub **Settings → Actions → General**：Workflow permissions 设为 **Read and write**，并允许 Actions 创建 PR。
 
 ## 许可
 

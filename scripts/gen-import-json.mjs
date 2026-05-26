@@ -1,7 +1,7 @@
 /**
- * 生成酒馆助手脚本导入 JSON（仅根目录一份）
+ * 生成酒馆助手脚本导入 JSON（根目录 Bark空回通知.json）
  *
- * JSON 只含 import 指向仓库 dist；勿用 testingcf 镜像（易长期缓存旧版）。
+ * CDN 使用 jsDelivr 的 @版本号（与 constants.ts 中 SCRIPT_VERSION、CI autotag 一致）
  *
  * 用法：npm run gen:import
  */
@@ -10,11 +10,19 @@ import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
+const constantsPath = path.join(root, 'src/酒馆助手/Bark空回通知/constants.ts');
 
-// 与 GitHub main 上 dist 同步；cdn.jsdelivr.net 会随 push 更新（勿用 testingcf）
-// 查询参数仅用于打破浏览器/CDN 旧模块缓存，不影响仓库内脚本路径
-const cdnUrl =
-  'https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js?v=2.2.0';
+function readScriptVersion() {
+  const src = fs.readFileSync(constantsPath, 'utf8');
+  const m = src.match(/SCRIPT_VERSION\s*=\s*['"]([^'"]+)['"]/);
+  if (!m) throw new Error('未在 constants.ts 中找到 SCRIPT_VERSION');
+  return m[1];
+}
+
+const version = process.env.BARK_CDN_VERSION?.replace(/^v/, '') || readScriptVersion();
+const repo = 'triishiu/st-bark-notify';
+// 使用 ?v= 打破缓存；CI 可在 autotag 后设 BARK_CDN_VERSION。也可用 @vX.Y.Z（需存在同名 git tag）
+const cdnUrl = `https://cdn.jsdelivr.net/gh/${repo}/dist/酒馆助手/Bark空回通知/index.js?v=${version}`;
 
 const script = {
   type: 'script',
@@ -30,4 +38,4 @@ const script = {
 
 const outFile = path.join(root, importFileName);
 fs.writeFileSync(outFile, `${JSON.stringify(script, null, 2)}\n`, 'utf8');
-console.log('OK →', outFile);
+console.log('OK →', outFile, `(v${version})`);
