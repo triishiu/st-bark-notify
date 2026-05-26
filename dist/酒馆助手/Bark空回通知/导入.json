@@ -1,0 +1,17 @@
+{
+  "type": "script",
+  "enabled": true,
+  "name": "Bark空回与截断通知",
+  "id": "87fdc68e-d00e-482a-890a-569b99fb3da1",
+  "content": "import('https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js');",
+  "info": "作者：@雨衣\n1. iOS 下载 Bark，复制 Key\n2. 扩展填 Key，点测试看能否收到",
+  "button": {
+    "enabled": true,
+    "buttons": []
+  },
+  "data": {},
+  "export_with": {
+    "data": false,
+    "button": false
+  }
+}
