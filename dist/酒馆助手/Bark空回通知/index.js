@@ -7,6 +7,7 @@ const IFRAME_NAME = 'bark-notify-iframe';
 ;// ./src/酒馆助手/Bark空回通知/settings.ts
 const defaultSettings = {
     enabled: true,
+    truncatedIfNoGreaterThanEnd: true,
     barkKey: '',
     barkServer: 'https://api.day.app',
     title: '酒馆提醒',
@@ -54,6 +55,7 @@ function readForm($root) {
     const barkKey = parseBarkKey(get('bn-key')) || s.barkKey;
     return {
         enabled: $root.find('#bn-enabled').prop('checked') ?? s.enabled,
+        truncatedIfNoGreaterThanEnd: $root.find('#bn-trunc-no-gt').prop('checked') ?? s.truncatedIfNoGreaterThanEnd,
         barkKey,
         barkServer: get('bn-server').trim() || s.barkServer,
         title: get('bn-title').trim() || defaultSettings.title,
@@ -169,7 +171,7 @@ function estimateTokens(text) {
     }
     return Math.ceil(tokens);
 }
-function analyzeReply(text, minTokens) {
+function analyzeReply(text, minTokens, truncatedIfNoGreaterThanEnd) {
     const visible = extractReplyText(text);
     const tokens = estimateTokens(text);
     const threshold = Number(minTokens) > 0 ? Number(minTokens) : defaultSettings.minTokens;
@@ -178,8 +180,9 @@ function analyzeReply(text, minTokens) {
     if (/^[.\s…。·\-_*#?？!！,，;；:：'""`~～^]+$/u.test(visible)) {
         return { shouldNotify: true, reason: '无效短回复', tokens };
     }
-    if (!text.trimEnd().endsWith('>'))
+    if (truncatedIfNoGreaterThanEnd && !text.trimEnd().endsWith('>')) {
         return { shouldNotify: true, reason: '截断(未以>结尾)', tokens };
+    }
     if (tokens < threshold)
         return { shouldNotify: true, reason: '截断(过短)', tokens };
     return { shouldNotify: false, reason: '', tokens };
@@ -239,7 +242,7 @@ async function checkAndNotify(message_id, trigger) {
         if (!isAssistantMessage(msg))
             return;
         const body = getMessageBody(msg);
-        const analysis = analyzeReply(body, s.minTokens);
+        const analysis = analyzeReply(body, s.minTokens, s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd);
         console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}`);
         if (!analysis.shouldNotify)
             return;
@@ -363,7 +366,7 @@ function bindUiEvents($root) {
         if (key)
             $(this).val(key);
     });
-    $root.on('change', '#bn-enabled', () => {
+    $root.on('change', '#bn-enabled, #bn-trunc-no-gt', () => {
         saveSettings(readForm($root));
         setStatus('开关状态已保存', 'ok');
     });
@@ -398,10 +401,18 @@ function mountUI() {
   <div class="inline-drawer-content">
     <div class="bn-body">
       <div class="bn-row">
-        <label class="checkbox_label bn-field">
+        <label class="checkbox_label bn-field bn-field--full">
           <input id="bn-enabled" type="checkbox" ${s.enabled ? 'checked' : ''}>
           <span>启用空回与截断通知</span>
         </label>
+      </div>
+      <div class="bn-row">
+        <label class="checkbox_label bn-field bn-field--full">
+          <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
+          <span>未以 &gt; 结尾时视为截断</span>
+        </label>
+      </div>
+      <div class="bn-row">
         <div class="bn-field">
           <label class="bn-label" for="bn-level">通知级别</label>
           <select id="bn-level" class="text_pole">

@@ -57,6 +57,7 @@ function estimateTokens(text: string): number {
 function analyzeReply(
   text: string,
   minTokens: number,
+  truncatedIfNoGreaterThanEnd: boolean,
 ): { shouldNotify: boolean; reason: string; tokens: number } {
   const visible = extractReplyText(text);
   const tokens = estimateTokens(text);
@@ -65,7 +66,9 @@ function analyzeReply(
   if (/^[.\s…。·\-_*#?？!！,，;；:：'""`~～^]+$/u.test(visible)) {
     return { shouldNotify: true, reason: '无效短回复', tokens };
   }
-  if (!text.trimEnd().endsWith('>')) return { shouldNotify: true, reason: '截断(未以>结尾)', tokens };
+  if (truncatedIfNoGreaterThanEnd && !text.trimEnd().endsWith('>')) {
+    return { shouldNotify: true, reason: '截断(未以>结尾)', tokens };
+  }
   if (tokens < threshold) return { shouldNotify: true, reason: '截断(过短)', tokens };
   return { shouldNotify: false, reason: '', tokens };
 }
@@ -127,7 +130,11 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     }
     if (!isAssistantMessage(msg)) return;
     const body = getMessageBody(msg);
-    const analysis = analyzeReply(body, s.minTokens);
+    const analysis = analyzeReply(
+      body,
+      s.minTokens,
+      s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd,
+    );
     console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}`);
     if (!analysis.shouldNotify) return;
     notifiedIds.add(msg.message_id ?? id);

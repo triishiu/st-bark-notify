@@ -1,5 +1,7 @@
 export interface Settings {
   enabled: boolean;
+  /** 未以 > 结尾时视为截断（默认开启） */
+  truncatedIfNoGreaterThanEnd: boolean;
   barkKey: string;
   barkServer: string;
   title: string;
@@ -11,6 +13,7 @@ export interface Settings {
 
 export const defaultSettings: Settings = {
   enabled: true,
+  truncatedIfNoGreaterThanEnd: true,
   barkKey: '',
   barkServer: 'https://api.day.app',
   title: '酒馆提醒',
@@ -57,6 +60,8 @@ export function readForm($root: JQuery<HTMLElement>): Settings {
   const barkKey = parseBarkKey(get('bn-key')) || s.barkKey;
   return {
     enabled: ($root.find('#bn-enabled').prop('checked') as boolean) ?? s.enabled,
+    truncatedIfNoGreaterThanEnd:
+      ($root.find('#bn-trunc-no-gt').prop('checked') as boolean) ?? s.truncatedIfNoGreaterThanEnd,
     barkKey,
     barkServer: get('bn-server').trim() || s.barkServer,
     title: get('bn-title').trim() || defaultSettings.title,

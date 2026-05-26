@@ -99,7 +99,7 @@ function bindUiEvents($root: JQuery<HTMLElement>): void {
     if (key) $(this).val(key);
   });
 
-  $root.on('change', '#bn-enabled', () => {
+  $root.on('change', '#bn-enabled, #bn-trunc-no-gt', () => {
     saveSettings(readForm($root));
     setStatus('开关状态已保存', 'ok');
   });
@@ -137,10 +137,18 @@ export function mountUI(): void {
   <div class="inline-drawer-content">
     <div class="bn-body">
       <div class="bn-row">
-        <label class="checkbox_label bn-field">
+        <label class="checkbox_label bn-field bn-field--full">
           <input id="bn-enabled" type="checkbox" ${s.enabled ? 'checked' : ''}>
           <span>启用空回与截断通知</span>
         </label>
+      </div>
+      <div class="bn-row">
+        <label class="checkbox_label bn-field bn-field--full">
+          <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
+          <span>未以 &gt; 结尾时视为截断</span>
+        </label>
+      </div>
+      <div class="bn-row">
         <div class="bn-field">
           <label class="bn-label" for="bn-level">通知级别</label>
           <select id="bn-level" class="text_pole">
