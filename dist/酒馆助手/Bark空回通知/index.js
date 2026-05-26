@@ -16,11 +16,39 @@ const defaultSettings = {
     level: 'timeSensitive',
     sound: 'default',
 };
+function scriptVarOption() {
+    const opt = { type: 'script' };
+    if (typeof getScriptId === 'function') {
+        try {
+            opt.script_id = getScriptId();
+        }
+        catch {
+            /* ignore */
+        }
+    }
+    return opt;
+}
+/** 酒馆变量里布尔有时是字符串，需显式解析 */
+function parseBoolish(value, fallback) {
+    if (typeof value === 'boolean')
+        return value;
+    if (value === 'false' || value === '0' || value === 0)
+        return false;
+    if (value === 'true' || value === '1' || value === 1)
+        return true;
+    return fallback;
+}
 function loadSettings() {
     try {
-        const raw = getVariables({ type: 'script' });
+        const raw = getVariables(scriptVarOption());
         if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
-            return { ...defaultSettings, ...raw };
+            const partial = raw;
+            return {
+                ...defaultSettings,
+                ...partial,
+                enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
+                truncatedIfNoGreaterThanEnd: parseBoolish(partial.truncatedIfNoGreaterThanEnd, defaultSettings.truncatedIfNoGreaterThanEnd),
+            };
         }
     }
     catch {
@@ -29,7 +57,7 @@ function loadSettings() {
     return { ...defaultSettings };
 }
 function saveSettings(settings) {
-    insertOrAssignVariables(settings, { type: 'script' });
+    replaceVariables({ ...settings }, scriptVarOption());
 }
 function parseBarkKey(raw) {
     let t = String(raw || '').trim();
@@ -54,8 +82,8 @@ function readForm($root) {
     const get = (id) => String($root.find(`#${id}`).val() ?? '');
     const barkKey = parseBarkKey(get('bn-key')) || s.barkKey;
     return {
-        enabled: $root.find('#bn-enabled').prop('checked') ?? s.enabled,
-        truncatedIfNoGreaterThanEnd: $root.find('#bn-trunc-no-gt').prop('checked') ?? s.truncatedIfNoGreaterThanEnd,
+        enabled: $root.find('#bn-enabled').is(':checked'),
+        truncatedIfNoGreaterThanEnd: $root.find('#bn-trunc-no-gt').is(':checked'),
         barkKey,
         barkServer: get('bn-server').trim() || s.barkServer,
         title: get('bn-title').trim() || defaultSettings.title,
@@ -242,8 +270,10 @@ async function checkAndNotify(message_id, trigger) {
         if (!isAssistantMessage(msg))
             return;
         const body = getMessageBody(msg);
-        const analysis = analyzeReply(body, s.minTokens, s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd);
-        console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}`);
+        const truncGt = s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd;
+        const analysis = analyzeReply(body, s.minTokens, truncGt);
+        console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}` +
+            ` reason=${analysis.reason || '-'} truncGt=${truncGt} minTokens=${s.minTokens}`);
         if (!analysis.shouldNotify)
             return;
         notifiedIds.add(msg.message_id ?? id);
@@ -280,6 +310,7 @@ function injectStyle() {
 #${PANEL_ID} .text_pole { width: 100%; box-sizing: border-box; margin: 0; padding: 4px 6px; min-height: unset; }
 #${PANEL_ID} select.text_pole { margin: 0; padding: 4px 6px; }
 #${PANEL_ID} .checkbox_label { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; line-height: 1.2; }
+#${PANEL_ID} .bn-hint { margin: 2px 0 0; padding: 0; font-size: 0.85em; opacity: 0.75; line-height: 1.3; }
 #${PANEL_ID} .bn-actions {
   display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px;
   align-items: center; margin: 6px 0 0; width: 100%;
@@ -349,7 +380,7 @@ function bindUiEvents($root) {
             setStatus('❌ 请先填 Bark Key', 'err');
             return;
         }
-        saveSettings({ ...form, enabled: true });
+        saveSettings(form);
         setStatus('⏳ 正在发送测试推送…', 'wait');
         $btn.data('busy', true).addClass('disabled').text('发送中…');
         try {
@@ -366,9 +397,9 @@ function bindUiEvents($root) {
         if (key)
             $(this).val(key);
     });
-    $root.on('change', '#bn-enabled, #bn-trunc-no-gt', () => {
+    $root.on('change', '#bn-enabled, #bn-trunc-no-gt, #bn-level, #bn-min-tokens', () => {
         saveSettings(readForm($root));
-        setStatus('开关状态已保存', 'ok');
+        setStatus('设置已保存', 'ok');
     });
 }
 function focusExtensionsSettings() {
@@ -411,6 +442,7 @@ function mountUI() {
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
         </label>
+        <p class="bn-hint">关闭后不会因缺少 &gt; 提醒；仍会检测空回，并按下方 token 阈值判断过短。</p>
       </div>
       <div class="bn-row">
         <div class="bn-field">

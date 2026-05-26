@@ -15,6 +15,7 @@ function injectStyle(): void {
 #${PANEL_ID} .text_pole { width: 100%; box-sizing: border-box; margin: 0; padding: 4px 6px; min-height: unset; }
 #${PANEL_ID} select.text_pole { margin: 0; padding: 4px 6px; }
 #${PANEL_ID} .checkbox_label { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; line-height: 1.2; }
+#${PANEL_ID} .bn-hint { margin: 2px 0 0; padding: 0; font-size: 0.85em; opacity: 0.75; line-height: 1.3; }
 #${PANEL_ID} .bn-actions {
   display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px;
   align-items: center; margin: 6px 0 0; width: 100%;
@@ -82,7 +83,7 @@ function bindUiEvents($root: JQuery<HTMLElement>): void {
       setStatus('❌ 请先填 Bark Key', 'err');
       return;
     }
-    saveSettings({ ...form, enabled: true });
+    saveSettings(form);
     setStatus('⏳ 正在发送测试推送…', 'wait');
     $btn.data('busy', true).addClass('disabled').text('发送中…');
     try {
@@ -99,9 +100,9 @@ function bindUiEvents($root: JQuery<HTMLElement>): void {
     if (key) $(this).val(key);
   });
 
-  $root.on('change', '#bn-enabled, #bn-trunc-no-gt', () => {
+  $root.on('change', '#bn-enabled, #bn-trunc-no-gt, #bn-level, #bn-min-tokens', () => {
     saveSettings(readForm($root));
-    setStatus('开关状态已保存', 'ok');
+    setStatus('设置已保存', 'ok');
   });
 }
 
@@ -147,6 +148,7 @@ export function mountUI(): void {
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
         </label>
+        <p class="bn-hint">关闭后不会因缺少 &gt; 提醒；仍会检测空回，并按下方 token 阈值判断过短。</p>
       </div>
       <div class="bn-row">
         <div class="bn-field">

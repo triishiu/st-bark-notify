@@ -130,12 +130,12 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     }
     if (!isAssistantMessage(msg)) return;
     const body = getMessageBody(msg);
-    const analysis = analyzeReply(
-      body,
-      s.minTokens,
-      s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd,
+    const truncGt = s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd;
+    const analysis = analyzeReply(body, s.minTokens, truncGt);
+    console.log(
+      `[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}` +
+        ` reason=${analysis.reason || '-'} truncGt=${truncGt} minTokens=${s.minTokens}`,
     );
-    console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} notify=${analysis.shouldNotify}`);
     if (!analysis.shouldNotify) return;
     notifiedIds.add(msg.message_id ?? id);
     await sendBark(s.emptyMsg, s);
