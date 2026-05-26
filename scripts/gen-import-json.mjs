@@ -10,7 +10,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 
 const cdnUrl =
-  'https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/bark-notify.js';
+  'https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js';
 
 const script = {
   type: 'script',

@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'dist/酒馆助手/Bark空回通知/bark-notify.js'
+      - 'dist/酒馆助手/Bark空回通知/index.js'
 
 permissions:
   contents: read
@@ -16,4 +16,4 @@ jobs:
       - run: |
           curl -fsS -X POST https://purge.jsdelivr.net/ \
             -H 'Content-Type: application/json' \
-            -d '{"path":"/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/bark-notify.js"}'
+            -d '{"path":"/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js"}'
