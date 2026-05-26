@@ -58,9 +58,8 @@ st-bark-notify/
 | **`src/…`** | 可读的 TypeScript 源码，按模块拆分 | **改功能只改这里**；随 Git 提交 |
 | **`dist/…/index.js`** | `npm run build` 打出来的单文件 JS | **不要手改**；改完 `src` 后 build，再提交，供 jsDelivr 拉取 |
 | **根目录 `Bark空回通知.json`** | 酒馆助手脚本导入格式 | `npm run gen:import` 可自动同步 CDN 地址 |
-| **`dist/…/Bark空回通知.json`** | 同上，放在 `dist` 旁备用 | 与根目录文件由同一脚本生成，内容一致 |
 
-一句话：**你写 `src`，用户和 CDN 用 `dist/index.js`，导入酒馆用根目录 JSON。**
+一句话：**你写 `src`，用户和 CDN 用 `dist/index.js`，导入酒馆用根目录 JSON（仅一份）。**
 
 ---
 
