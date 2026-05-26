@@ -18,13 +18,13 @@
 1. 酒馆 → **酒馆助手** → **脚本** → **导入**，选择下载的 JSON。
 3. 启用脚本 → **扩展** → **Bark 空回/截断通知** → 填写 Bark Key → **保存**。
 
-脚本实际从 CDN 加载（与 JSON 内 `content` 一致）：
+JSON 里只有一行 `import`，实际脚本在仓库 **`dist/酒馆助手/Bark空回通知/index.js`**，由 jsDelivr 从 GitHub 拉取：
 
 ```js
-import('https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js');
+import('https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js');
 ```
 
-> **若行为像旧版**：在脚本列表中删除其它重复的 Bark 相关脚本后，重新导入上述 JSON。
+> 不要用 `testingcf.jsdelivr.net`：该镜像曾长期返回旧版（扩展页只有「启用」）。若仍像旧版：删掉重复 Bark 脚本 → 重新导入 JSON → Ctrl+F5。
 
 ---
 
@@ -57,7 +57,7 @@ st-bark-notify/
 |------|------|------------------|
 | **`src/…`** | 可读的 TypeScript 源码，按模块拆分 | **改功能只改这里**；随 Git 提交 |
 | **`dist/…/index.js`** | `npm run build` 打出来的单文件 JS | **不要手改**；改完 `src` 后 build，再提交，供 CDN 拉取 |
-| **根目录 `Bark空回通知.json`** | 酒馆助手脚本导入格式 | `npm run gen:import` 可自动同步 CDN 地址 |
+| **根目录 `Bark空回通知.json`** | 导入用（`import` 指向 dist CDN） | `npm run gen:import` 生成 |
 
 一句话：**你写 `src`，用户和 CDN 用 `dist/index.js`，导入酒馆用根目录 JSON（仅一份）。**
 

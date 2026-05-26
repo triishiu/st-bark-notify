@@ -1,6 +1,8 @@
 /**
  * 生成酒馆助手脚本导入 JSON（仅根目录一份）
  *
+ * JSON 只含 import 指向仓库 dist；勿用 testingcf 镜像（易长期缓存旧版）。
+ *
  * 用法：npm run gen:import
  */
 import fs from 'node:fs';
@@ -9,8 +11,9 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 
+// 与 GitHub main 上 dist 同步；cdn.jsdelivr.net 会随 push 更新（勿用 testingcf）
 const cdnUrl =
-  'https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js';
+  'https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js';
 
 const script = {
   type: 'script',
