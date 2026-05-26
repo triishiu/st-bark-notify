@@ -10,7 +10,7 @@
 
 ## 使用（只需导入，无需克隆仓库）
 
-1. 打开本仓库根目录的 [`Bark空回与截断通知.json`](Bark空回与截断通知.json)，下载或复制内容。
+1. 打开本仓库根目录的 [`Bark空回通知.json`](Bark空回通知.json)，下载或复制内容。
 2. 酒馆 → **酒馆助手** → **脚本** → **导入**，粘贴/选择该 JSON。
 3. 启用脚本 → **扩展** → **Bark 空回/截断通知** → 填写 Bark Key → **保存**。
 
@@ -30,7 +30,7 @@ import('https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助
 
 ```
 st-bark-notify/
-├── Bark空回与截断通知.json          ← 给酒馆「导入」用（推荐下载这个）
+├── Bark空回通知.json          ← 给酒馆「导入」用（推荐下载这个）
 ├── src/酒馆助手/Bark空回通知/      ← 源码（开发时改这里）
 │   ├── index.ts                  入口
 │   ├── detection.ts              空回/截断检测
@@ -41,7 +41,7 @@ st-bark-notify/
 ├── dist/酒馆助手/Bark空回通知/     ← 构建产物（CDN / 酒馆真正加载的 JS）
 │   ├── index.js
 │   ├── index.js.map              调试用，酒馆运行不依赖
-│   └── Bark空回与截断通知.json     与根目录导入 JSON 内容相同
+│   └── Bark空回通知.json     与根目录导入 JSON 内容相同
 ├── scripts/gen-import-json.mjs   根据 CDN 地址生成两份导入 JSON
 ├── @types/                       酒馆助手 API 类型（仅开发用）
 ├── webpack.config.ts 等          打包配置（仅开发用）
@@ -54,8 +54,8 @@ st-bark-notify/
 |------|------|------------------|
 | **`src/…`** | 可读的 TypeScript 源码，按模块拆分 | **改功能只改这里**；随 Git 提交 |
 | **`dist/…/index.js`** | `npm run build` 打出来的单文件 JS | **不要手改**；改完 `src` 后 build，再提交，供 jsDelivr 拉取 |
-| **根目录 `Bark空回与截断通知.json`** | 酒馆助手脚本导入格式 | `npm run gen:import` 可自动同步 CDN 地址 |
-| **`dist/…/Bark空回与截断通知.json`** | 同上，放在 `dist` 旁备用 | 与根目录文件由同一脚本生成，内容一致 |
+| **根目录 `Bark空回通知.json`** | 酒馆助手脚本导入格式 | `npm run gen:import` 可自动同步 CDN 地址 |
+| **`dist/…/Bark空回通知.json`** | 同上，放在 `dist` 旁备用 | 与根目录文件由同一脚本生成，内容一致 |
 
 一句话：**你写 `src`，用户和 CDN 用 `dist/index.js`，导入酒馆用根目录 JSON。**
 
@@ -84,7 +84,7 @@ npm run lint         # ESLint
 1. 编辑 `src/酒馆助手/Bark空回通知/`
 2. `npm run build`
 3. `npm run gen:import`（若改过仓库名、路径或 CDN 域名）
-4. 提交 `src`、`dist`、`Bark空回与截断通知.json` 并 push 到 GitHub
+4. 提交 `src`、`dist`、`Bark空回通知.json` 并 push 到 GitHub
 5. 等待 jsDelivr 刷新（通常数分钟）后，在酒馆重新导入或刷新脚本
 
 也可在 GitHub Actions 中手动运行 **bundle** workflow（会执行 `build` + `gen:import`）。
