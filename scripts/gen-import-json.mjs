@@ -1,16 +1,24 @@
 /**
- * 生成酒馆助手脚本导入 JSON（仅根目录一份，避免与 dist 重复）
+ * 生成酒馆助手脚本导入 JSON（仅根目录一份）
+ * CDN 带 git 短 commit，避免 jsDelivr 缓存旧版 index.js
  *
  * 用法：npm run gen:import
  */
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 
-const cdnUrl =
-  'https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js';
+let ref = 'main';
+try {
+  ref = execSync('git rev-parse --short HEAD', { cwd: root, encoding: 'utf8' }).trim();
+} catch {
+  /* 非 git 环境时用 main */
+}
+
+const cdnUrl = `https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify@${ref}/dist/酒馆助手/Bark空回通知/index.js`;
 
 const script = {
   type: 'script',
@@ -26,4 +34,4 @@ const script = {
 
 const outFile = path.join(root, importFileName);
 fs.writeFileSync(outFile, `${JSON.stringify(script, null, 2)}\n`, 'utf8');
-console.log('OK →', outFile);
+console.log('OK', ref, '→', outFile);

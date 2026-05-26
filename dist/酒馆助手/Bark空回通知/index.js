@@ -485,7 +485,7 @@ if (tavern_events.GENERATION_ENDED) {
 eventOn(getButtonEvent('Bark通知设置'), () => focusExtensionsSettings());
 $(() => {
     mountUI();
-    console.log('[Bark通知] 脚本已加载');
+    console.log('[Bark通知] 脚本已加载（含「未以>结尾视为截断」选项）');
 });
 $(window).on('pagehide', () => {
     teardownUI();
