@@ -188,6 +188,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     .includes('@obfuscate');
   const scriptPath = entry.script.replace(/\\/g, '/');
   const keep_readable_dist = scriptPath.includes('src/酒馆助手/');
+  const is_bark_notify = scriptPath.includes('Bark空回通知');
   const script_filepath = path.parse(entry.script);
 
   return (_env, argv) => ({
@@ -212,7 +213,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
         return `${is_direct === true ? 'src' : 'webpack'}://${info.namespace}/${resource_path}${is_direct || is_vue_script ? '' : '?' + info.hash}`;
       },
-      filename: `${script_filepath.name}.js`,
+      filename: is_bark_notify ? 'bark-notify.js' : `${script_filepath.name}.js`,
       path: path.join(
         import.meta.dirname,
         'dist',

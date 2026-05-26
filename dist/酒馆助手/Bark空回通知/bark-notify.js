@@ -492,4 +492,4 @@ $(window).on('pagehide', () => {
 });
 
 
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=bark-notify.js.map

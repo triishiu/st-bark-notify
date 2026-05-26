@@ -21,10 +21,8 @@
 脚本实际从 CDN 加载（与 JSON 内 `content` 一致）：
 
 ```js
-import('https://raw.githubusercontent.com/triishiu/st-bark-notify/main/dist/酒馆助手/Bark空回通知/index.js');
+import('https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/bark-notify.js');
 ```
-
-（导入 JSON 内已使用该地址。`testingcf.jsdelivr.net` 同款路径可能长期缓存旧版 `index.js`，故改用 GitHub raw 源，无 commit 数字。）
 
 > **若行为像旧版**：在脚本列表中删除其它重复的 Bark 相关脚本后，重新导入上述 JSON。
 
@@ -45,8 +43,8 @@ st-bark-notify/
 │   ├── panel.ts                  扩展页 UI
 │   └── constants.ts              常量
 ├── dist/酒馆助手/Bark空回通知/     ← 构建产物（CDN / 酒馆真正加载的 JS）
-│   ├── index.js
-│   └── index.js.map              调试用，酒馆运行不依赖
+│   ├── bark-notify.js            CDN 加载此文件（非 index.js，避免缓存旧版）
+│   └── bark-notify.js.map        调试用，酒馆运行不依赖
 ├── scripts/gen-import-json.mjs   生成根目录导入 JSON
 ├── @types/                       酒馆助手 API 类型（仅开发用）
 ├── webpack.config.ts 等          打包配置（仅开发用）
@@ -58,10 +56,10 @@ st-bark-notify/
 | 目录 | 作用 | 要不要改 / 提交 |
 |------|------|------------------|
 | **`src/…`** | 可读的 TypeScript 源码，按模块拆分 | **改功能只改这里**；随 Git 提交 |
-| **`dist/…/index.js`** | `npm run build` 打出来的单文件 JS | **不要手改**；改完 `src` 后 build，再提交，供 jsDelivr 拉取 |
+| **`dist/…/bark-notify.js`** | `npm run build` 打出来的单文件 JS | **不要手改**；改完 `src` 后 build，再提交，供 CDN 拉取 |
 | **根目录 `Bark空回通知.json`** | 酒馆助手脚本导入格式 | `npm run gen:import` 可自动同步 CDN 地址 |
 
-一句话：**你写 `src`，用户和 CDN 用 `dist/index.js`，导入酒馆用根目录 JSON（仅一份）。**
+一句话：**你写 `src`，用户和 CDN 用 `dist/bark-notify.js`，导入酒馆用根目录 JSON（仅一份）。**
 
 ---
 
@@ -77,7 +75,7 @@ st-bark-notify/
 ```bash
 npm install --legacy-peer-deps
 
-npm run build        # src → dist/酒馆助手/Bark空回通知/index.js
+npm run build        # src → dist/酒馆助手/Bark空回通知/bark-notify.js
 npm run gen:import   # 同步根目录与 dist 下的导入 JSON（改 CDN 或脚本名后执行）
 npm run watch        # 监听 src 变更并热构建（需酒馆助手「允许监听」）
 npm run lint         # ESLint
