@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: softprops/action-gh-release@v2
         with:
-          name: Bark空回/截断通知
+          name: Bark空回与截断通知
           generate_release_notes: true
           files: |
-            Bark空回／截断通知.json
+            Bark空回与截断通知.json
