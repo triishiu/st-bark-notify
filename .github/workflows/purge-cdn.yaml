@@ -1,0 +1,19 @@
+name: purge-cdn
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dist/酒馆助手/Bark空回通知/index.js'
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsS -X POST https://purge.jsdelivr.net/ \
+            -H 'Content-Type: application/json' \
+            -d '{"path":"/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js"}'

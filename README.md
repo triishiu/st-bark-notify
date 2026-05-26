@@ -21,8 +21,10 @@
 脚本实际从 CDN 加载（与 JSON 内 `content` 一致）：
 
 ```js
-import('https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js');
+import('https://raw.githubusercontent.com/triishiu/st-bark-notify/main/dist/酒馆助手/Bark空回通知/index.js');
 ```
+
+（导入 JSON 内已使用该地址。`testingcf.jsdelivr.net` 同款路径可能长期缓存旧版 `index.js`，故改用 GitHub raw 源，无 commit 数字。）
 
 > **若行为像旧版**：在脚本列表中删除其它重复的 Bark 相关脚本后，重新导入上述 JSON。
 
