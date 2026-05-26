@@ -13,6 +13,8 @@ auto-imports.d.ts
 components.d.ts
 
 # 本地拖入的重复/旧导入文件
+Bark空回通知-导入.json
 Bark空回通知-酒馆助手导入.json
 Bark空回通知(1)*.json
 Bark空回通知-导入-*.json
+dist/酒馆助手/Bark空回通知/导入.json
