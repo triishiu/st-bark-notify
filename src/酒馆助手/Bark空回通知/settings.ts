@@ -48,14 +48,15 @@ export function loadSettings(): Settings {
     const raw = getVariables(scriptVarOption());
     if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
       const partial = raw as Partial<Settings>;
+      const truncatedIfNoGreaterThanEnd = parseBoolish(
+        partial.truncatedIfNoGreaterThanEnd,
+        defaultSettings.truncatedIfNoGreaterThanEnd,
+      );
       return {
         ...defaultSettings,
         ...partial,
         enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
-        truncatedIfNoGreaterThanEnd: parseBoolish(
-          partial.truncatedIfNoGreaterThanEnd,
-          defaultSettings.truncatedIfNoGreaterThanEnd,
-        ),
+        truncatedIfNoGreaterThanEnd,
       };
     }
   } catch {

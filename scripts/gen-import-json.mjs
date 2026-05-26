@@ -12,8 +12,9 @@ const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 
 // 与 GitHub main 上 dist 同步；cdn.jsdelivr.net 会随 push 更新（勿用 testingcf）
+// 查询参数仅用于打破浏览器/CDN 旧模块缓存，不影响仓库内脚本路径
 const cdnUrl =
-  'https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js';
+  'https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify/dist/酒馆助手/Bark空回通知/index.js?v=2.2.0';
 
 const script = {
   type: 'script',

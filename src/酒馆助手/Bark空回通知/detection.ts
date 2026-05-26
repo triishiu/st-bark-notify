@@ -1,3 +1,4 @@
+import { SCRIPT_VERSION } from './constants';
 import { sendBark } from './send-bark';
 import { defaultSettings, loadSettings } from './settings';
 
@@ -96,12 +97,31 @@ function analyzeReply(
 }
 
 let generationActive = false;
+const checkTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
+const notifiedIds = new Set<number | string>();
 
-/** 生成未结束前不判定，避免流式中途误判空回并锁死 notifiedIds */
+function clearPendingChecks(): void {
+  for (const timer of checkTimers.values()) clearTimeout(timer);
+  checkTimers.clear();
+}
+
+function resetNotifyStateForMessage(message_id: number | string | undefined): void {
+  if (message_id == null) return;
+  notifiedIds.delete(normalizeMessageId(message_id));
+}
+
+/** 仅在生成结束后检测；无 GENERATION_ENDED 时用 MESSAGE_UPDATED 防抖兜底 */
 export function bindGenerationGate(): void {
   if (tavern_events.GENERATION_STARTED) {
     eventOn(tavern_events.GENERATION_STARTED, () => {
       generationActive = true;
+      clearPendingChecks();
+      try {
+        const last = getChatMessages(-1)[0];
+        resetNotifyStateForMessage(last?.message_id);
+      } catch {
+        /* ignore */
+      }
     });
   }
   if (tavern_events.GENERATION_STOPPED) {
@@ -112,7 +132,16 @@ export function bindGenerationGate(): void {
   if (tavern_events.GENERATION_ENDED) {
     eventOn(tavern_events.GENERATION_ENDED, (message_id: number) => {
       generationActive = false;
+      clearPendingChecks();
+      resetNotifyStateForMessage(message_id);
       scheduleCheck(message_id, 'generation_ended');
+    });
+    return;
+  }
+  console.warn('[Bark通知] 无 GENERATION_ENDED，使用 MESSAGE_UPDATED 防抖兜底（3s）');
+  if (tavern_events.MESSAGE_UPDATED) {
+    eventOn(tavern_events.MESSAGE_UPDATED, (message_id: number) => {
+      scheduleCheck(message_id, 'updated_settled');
     });
   }
 }
@@ -158,31 +187,41 @@ export function bindStopDetector(): void {
   });
 }
 
-const checkTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
-const notifiedIds = new Set<number | string>();
-
-async function checkAndNotify(message_id: number | string, trigger: string): Promise<void> {
-  const s = loadSettings();
+async function readAssistantBody(
+  message_id: number | string,
+  trigger: string,
+): Promise<{ msg: ReturnType<typeof getChatMessages>[0]; body: string } | null> {
   const id = normalizeMessageId(message_id);
-  if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim()) return;
-  if (generationActive && !trigger.includes('generation_ended')) {
-    scheduleCheck(id, 'waitGen');
-    return;
-  }
-  if (notifiedIds.has(id)) return;
-  try {
+  const attempts = trigger.includes('generation_ended') ? 4 : 1;
+  for (let i = 0; i < attempts; i++) {
     let msg = getChatMessages(id as number)[0];
     if (!isAssistantMessage(msg)) {
       const last = getChatMessages(-1)[0];
       if (isAssistantMessage(last)) msg = last;
     }
-    if (!isAssistantMessage(msg)) return;
+    if (!isAssistantMessage(msg)) return null;
     const body = getMessageBody(msg);
-    const truncGt = s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd;
+    if (body.length > 0 || i === attempts - 1) return { msg, body };
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return null;
+}
+
+async function checkAndNotify(message_id: number | string, trigger: string): Promise<void> {
+  const s = loadSettings();
+  const id = normalizeMessageId(message_id);
+  if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim()) return;
+  if (generationActive) return;
+  if (notifiedIds.has(id)) return;
+  try {
+    const read = await readAssistantBody(message_id, trigger);
+    if (!read) return;
+    const { msg, body } = read;
+    const truncGt = s.truncatedIfNoGreaterThanEnd;
     const analysis = analyzeReply(body, s.minTokens, truncGt);
     const visibleLen = extractReplyText(body).length;
-    console.log(
-      `[Bark通知] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
+    console.info(
+      `[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
         ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
         ` truncGt=${truncGt} minTokens=${s.minTokens}`,
     );
@@ -197,7 +236,11 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
 export function scheduleCheck(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
   if (checkTimers.has(id)) clearTimeout(checkTimers.get(id)!);
-  const delay = trigger.includes('generation_ended') ? 400 : 1000;
+  const delay = trigger.includes('generation_ended')
+    ? 1200
+    : trigger.includes('updated_settled')
+      ? 3000
+      : 1000;
   checkTimers.set(
     id,
     setTimeout(() => {

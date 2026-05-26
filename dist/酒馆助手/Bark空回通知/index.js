@@ -1,5 +1,7 @@
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
+/** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
+const SCRIPT_VERSION = '2.2.0';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -43,11 +45,12 @@ function loadSettings() {
         const raw = getVariables(scriptVarOption());
         if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
             const partial = raw;
+            const truncatedIfNoGreaterThanEnd = parseBoolish(partial.truncatedIfNoGreaterThanEnd, defaultSettings.truncatedIfNoGreaterThanEnd);
             return {
                 ...defaultSettings,
                 ...partial,
                 enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
-                truncatedIfNoGreaterThanEnd: parseBoolish(partial.truncatedIfNoGreaterThanEnd, defaultSettings.truncatedIfNoGreaterThanEnd),
+                truncatedIfNoGreaterThanEnd,
             };
         }
     }
@@ -138,6 +141,7 @@ async function sendBark(message, override) {
 }
 
 ;// ./src/酒馆助手/Bark空回通知/detection.ts
+
 
 
 function getMessageBody(msg) {
@@ -236,11 +240,31 @@ function analyzeReply(text, minTokens, truncatedIfNoGreaterThanEnd) {
     return { shouldNotify: false, reason: '', tokens };
 }
 let generationActive = false;
-/** 生成未结束前不判定，避免流式中途误判空回并锁死 notifiedIds */
+const checkTimers = new Map();
+const notifiedIds = new Set();
+function clearPendingChecks() {
+    for (const timer of checkTimers.values())
+        clearTimeout(timer);
+    checkTimers.clear();
+}
+function resetNotifyStateForMessage(message_id) {
+    if (message_id == null)
+        return;
+    notifiedIds.delete(normalizeMessageId(message_id));
+}
+/** 仅在生成结束后检测；无 GENERATION_ENDED 时用 MESSAGE_UPDATED 防抖兜底 */
 function bindGenerationGate() {
     if (tavern_events.GENERATION_STARTED) {
         eventOn(tavern_events.GENERATION_STARTED, () => {
             generationActive = true;
+            clearPendingChecks();
+            try {
+                const last = getChatMessages(-1)[0];
+                resetNotifyStateForMessage(last?.message_id);
+            }
+            catch {
+                /* ignore */
+            }
         });
     }
     if (tavern_events.GENERATION_STOPPED) {
@@ -251,7 +275,16 @@ function bindGenerationGate() {
     if (tavern_events.GENERATION_ENDED) {
         eventOn(tavern_events.GENERATION_ENDED, (message_id) => {
             generationActive = false;
+            clearPendingChecks();
+            resetNotifyStateForMessage(message_id);
             scheduleCheck(message_id, 'generation_ended');
+        });
+        return;
+    }
+    console.warn('[Bark通知] 无 GENERATION_ENDED，使用 MESSAGE_UPDATED 防抖兜底（3s）');
+    if (tavern_events.MESSAGE_UPDATED) {
+        eventOn(tavern_events.MESSAGE_UPDATED, (message_id) => {
+            scheduleCheck(message_id, 'updated_settled');
         });
     }
 }
@@ -291,20 +324,10 @@ function bindStopDetector() {
             eventOn(tavern_events[name], () => markUserStopped(name));
     });
 }
-const checkTimers = new Map();
-const notifiedIds = new Set();
-async function checkAndNotify(message_id, trigger) {
-    const s = loadSettings();
+async function readAssistantBody(message_id, trigger) {
     const id = normalizeMessageId(message_id);
-    if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim())
-        return;
-    if (generationActive && !trigger.includes('generation_ended')) {
-        scheduleCheck(id, 'waitGen');
-        return;
-    }
-    if (notifiedIds.has(id))
-        return;
-    try {
+    const attempts = trigger.includes('generation_ended') ? 4 : 1;
+    for (let i = 0; i < attempts; i++) {
         let msg = getChatMessages(id)[0];
         if (!isAssistantMessage(msg)) {
             const last = getChatMessages(-1)[0];
@@ -312,12 +335,32 @@ async function checkAndNotify(message_id, trigger) {
                 msg = last;
         }
         if (!isAssistantMessage(msg))
-            return;
+            return null;
         const body = getMessageBody(msg);
-        const truncGt = s.truncatedIfNoGreaterThanEnd ?? defaultSettings.truncatedIfNoGreaterThanEnd;
+        if (body.length > 0 || i === attempts - 1)
+            return { msg, body };
+        await new Promise(r => setTimeout(r, 500));
+    }
+    return null;
+}
+async function checkAndNotify(message_id, trigger) {
+    const s = loadSettings();
+    const id = normalizeMessageId(message_id);
+    if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim())
+        return;
+    if (generationActive)
+        return;
+    if (notifiedIds.has(id))
+        return;
+    try {
+        const read = await readAssistantBody(message_id, trigger);
+        if (!read)
+            return;
+        const { msg, body } = read;
+        const truncGt = s.truncatedIfNoGreaterThanEnd;
         const analysis = analyzeReply(body, s.minTokens, truncGt);
         const visibleLen = extractReplyText(body).length;
-        console.log(`[Bark通知] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
+        console.info(`[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
             ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
             ` truncGt=${truncGt} minTokens=${s.minTokens}`);
         if (!analysis.shouldNotify)
@@ -333,7 +376,11 @@ function scheduleCheck(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     if (checkTimers.has(id))
         clearTimeout(checkTimers.get(id));
-    const delay = trigger.includes('generation_ended') ? 400 : 1000;
+    const delay = trigger.includes('generation_ended')
+        ? 1200
+        : trigger.includes('updated_settled')
+            ? 3000
+            : 1000;
     checkTimers.set(id, setTimeout(() => {
         checkTimers.delete(id);
         void checkAndNotify(id, trigger);
@@ -549,20 +596,13 @@ function teardownUI() {
 // Bark 空回/截断通知 — 入口（逻辑见同目录各模块；dist 保持可读格式供 GitHub / CDN）
 
 
+
 bindStopDetector();
 bindGenerationGate();
-eventOn(tavern_events.MESSAGE_RECEIVED, (message_id, type) => {
-    if (type === 'append')
-        return;
-    scheduleCheck(message_id, `received:${type ?? 'unknown'}`);
-});
-if (tavern_events.MESSAGE_UPDATED) {
-    eventOn(tavern_events.MESSAGE_UPDATED, (message_id) => scheduleCheck(message_id, 'updated'));
-}
 eventOn(getButtonEvent('Bark通知设置'), () => focusExtensionsSettings());
 $(() => {
     mountUI();
-    console.log('[Bark通知] 脚本已加载（含「未以>结尾视为截断」选项）');
+    console.info(`[Bark通知] 脚本 v${SCRIPT_VERSION} 已加载（仅在生成结束后检测）`);
 });
 $(window).on('pagehide', () => {
     teardownUI();
