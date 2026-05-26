@@ -1,7 +1,5 @@
 /**
- * 生成酒馆助手脚本导入 JSON（两份内容相同）：
- * - 仓库根目录 Bark空回通知.json
- * - dist/酒馆助手/Bark空回通知/Bark空回通知.json
+ * 生成酒馆助手脚本导入 JSON（仅根目录一份，避免与 dist 重复）
  *
  * 用法：npm run gen:import
  */
@@ -26,15 +24,6 @@ const script = {
   export_with: { data: false, button: false },
 };
 
-const json = `${JSON.stringify(script, null, 2)}\n`;
-const outFiles = [
-  path.join(root, importFileName),
-  path.join(root, 'dist/酒馆助手/Bark空回通知', importFileName),
-];
-
-for (const file of outFiles) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, json, 'utf8');
-}
-
-console.log('OK →', outFiles.join(', '));
+const outFile = path.join(root, importFileName);
+fs.writeFileSync(outFile, `${JSON.stringify(script, null, 2)}\n`, 'utf8');
+console.log('OK →', outFile);

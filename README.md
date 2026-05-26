@@ -10,8 +10,12 @@
 
 ## 使用（只需导入，无需克隆仓库）
 
-1. 打开本仓库根目录的 [`Bark空回通知.json`](Bark空回通知.json)，下载或复制内容。
-2. 酒馆 → **酒馆助手** → **脚本** → **导入**，粘贴/选择该 JSON。
+**下载导入文件（任选其一）：**
+
+- [Releases](https://github.com/triishiu/st-bark-notify/releases/latest) → 下载 `bark-notify-import.json`
+- 或 [直接链接](https://raw.githubusercontent.com/triishiu/st-bark-notify/main/Bark空回通知.json)
+
+1. 酒馆 → **酒馆助手** → **脚本** → **导入**，选择下载的 JSON。
 3. 启用脚本 → **扩展** → **Bark 空回/截断通知** → 填写 Bark Key → **保存**。
 
 脚本实际从 CDN 加载（与 JSON 内 `content` 一致）：
@@ -40,9 +44,8 @@ st-bark-notify/
 │   └── constants.ts              常量
 ├── dist/酒馆助手/Bark空回通知/     ← 构建产物（CDN / 酒馆真正加载的 JS）
 │   ├── index.js
-│   ├── index.js.map              调试用，酒馆运行不依赖
-│   └── Bark空回通知.json     与根目录导入 JSON 内容相同
-├── scripts/gen-import-json.mjs   根据 CDN 地址生成两份导入 JSON
+│   └── index.js.map              调试用，酒馆运行不依赖
+├── scripts/gen-import-json.mjs   生成根目录导入 JSON
 ├── @types/                       酒馆助手 API 类型（仅开发用）
 ├── webpack.config.ts 等          打包配置（仅开发用）
 └── package.json

@@ -13,9 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # GitHub Release 对中文文件名会截断成 Bark.json，先复制为 ASCII 文件名再上传
+      - name: Prepare release asset
+        run: cp "Bark空回通知.json" bark-notify-import.json
       - uses: softprops/action-gh-release@v2
         with:
           name: Bark空回通知
           tag_name: Bark空回通知
-          files: |
-            Bark空回通知.json
+          body: |
+            下载 **bark-notify-import.json** 导入酒馆助手（与仓库根目录 `Bark空回通知.json` 内容相同）。
+          files: bark-notify-import.json
