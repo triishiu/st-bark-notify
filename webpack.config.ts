@@ -186,8 +186,11 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
   const should_obfuscate = fs
     .readFileSync(path.join(import.meta.dirname, entry.script), 'utf-8')
     .includes('@obfuscate');
+<<<<<<< HEAD
   const scriptPath = entry.script.replace(/\\/g, '/');
   const keep_readable_dist = scriptPath.includes('src/酒馆助手/');
+=======
+>>>>>>> 1edcc383164d8213f030dcdfabc0b6563966ae13
   const script_filepath = path.parse(entry.script);
 
   return (_env, argv) => ({
@@ -485,7 +488,11 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
           : [],
       ),
     optimization: {
+<<<<<<< HEAD
       minimize: argv.mode === 'production' && !keep_readable_dist,
+=======
+      minimize: true,
+>>>>>>> 1edcc383164d8213f030dcdfabc0b6563966ae13
       minimizer: [
         argv.mode === 'production'
           ? new TerserPlugin({
