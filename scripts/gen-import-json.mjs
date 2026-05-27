@@ -1,7 +1,11 @@
 /**
  * 生成酒馆助手脚本导入 JSON（根目录 Bark空回通知.json）
  *
- * CDN 与 StageDog 一致：testingcf 干净路径 boot.js → version.json + main.js?v=版本
+ * 干净路径（无 @main）：
+ * - index.js：经 cdn.jsdelivr 指向 main 分支（testingcf 同路径 index 可能被旧缓存占用）
+ * - 备选 boot.js：testingcf 干净路径 …/boot.js（与 index 相同引导逻辑）
+ *
+ * 发版后用户只需刷新页面；main.js 由 version.json 带 ?v= 破缓存。
  *
  * 用法：npm run gen:import
  */
@@ -11,7 +15,11 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 const repo = 'triishiu/st-bark-notify';
-const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}/dist/酒馆助手/Bark空回通知/boot.js`;
+const distPath = 'dist/酒馆助手/Bark空回通知';
+/** testingcf 干净路径：用 boot.js（index.js 同路径易被旧缓存占用） */
+const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}/${distPath}/boot.js`;
+/** 若坚持用 index.js 文件名，可用官方 CDN 干净路径 */
+const cdnUrlIndexClean = `https://cdn.jsdelivr.net/gh/${repo}/${distPath}/index.js`;
 
 const script = {
   type: 'script',
@@ -19,7 +27,9 @@ const script = {
   name: 'Bark空回通知',
   id: '87fdc68e-d00e-482a-890a-569b99fb3da1',
   content: `import('${cdnUrl}');`,
-  info: '作者：@雨衣\n1. iOS 下载 Bark，复制 Key\n2. 扩展填 Key，点测试看能否收到',
+  info:
+    '作者：@雨衣\n1. iOS 下载 Bark，复制 Key\n2. 扩展填 Key，点测试看能否收到\n' +
+    `（index.js 干净路径备选：${cdnUrlIndexClean}）`,
   button: { enabled: true, buttons: [] },
   data: {},
   export_with: { data: false, button: false },

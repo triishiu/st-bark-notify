@@ -71,15 +71,15 @@ async function runBootstrap(entryLabel) {
     throw lastErr ?? new Error('无法加载 main.js');
 }
 
-;// ./src/酒馆助手/Bark空回通知/boot.ts
+;// ./src/酒馆助手/Bark空回通知/index.ts
 /**
- * 外层 boot.js：testingcf 无 @main 时 index.js 可能被旧缓存占用，
- * 可改用干净路径 …/boot.js 导入（与 index 相同逻辑）。
+ * 固定入口 index.js（JSON 导入本文件）。
+ * 干净 CDN 路径见 gen-import-json；内部用 bootstrap 拉 version + main。
  */
 
-void runBootstrap('boot').catch(err => {
+void runBootstrap('index').catch(err => {
     console.error('[Bark通知] 引导加载失败:', err);
 });
 
 
-//# sourceMappingURL=boot.js.map
+//# sourceMappingURL=index.js.map
