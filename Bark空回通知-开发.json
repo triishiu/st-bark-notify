@@ -1,0 +1,11 @@
+{
+  "type": "script",
+  "enabled": true,
+  "name": "Bark空回通知",
+  "id": "87fdc68e-d00e-482a-890a-569b99fb3da1",
+  "content": "import('http://localhost:5500/dist/酒馆助手/Bark空回通知/index.js');",
+  "info": "【电脑开发用】需本机 pnpm watch + 端口5500静态服务 + 酒馆「允许监听」。手机游玩请用 Bark空回通知.json（CDN）",
+  "button": { "enabled": true, "buttons": [] },
+  "data": {},
+  "export_with": { "data": false, "button": false }
+}
