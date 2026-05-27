@@ -9,8 +9,7 @@
     "dump": "node dump_schema.ts",
     "sync": "node tavern_sync.mjs",
     "gen:import": "node scripts/gen-import-json.mjs",
-    "postbuild": "node scripts/write-version-json.mjs && pnpm run gen:import",
-    "purge:cdn": "node scripts/purge-jsdelivr.mjs"
+    "postbuild": "node scripts/write-version-json.mjs && pnpm run gen:import"
   },
   "browserslist": [
     "defaults and partially supports es6-module"

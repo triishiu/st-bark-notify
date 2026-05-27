@@ -1,6 +1,5 @@
 /**
- * 引导：JSON 固定 @main/index.js，发版后用户只刷新页面。
- * version / main 优先 raw.githubusercontent（跟 GitHub 同步），CDN @main 作备选；CI 会 purge jsDelivr。
+ * 引导：不用任何 CDN，仅从 raw GitHub（与 main 同步）或本机 5500 开发服务加载。
  */
 
 import { GIT_BRANCH, REPO, SCRIPT_VERSION } from './constants';
@@ -9,10 +8,6 @@ export { REPO };
 export const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
-
-function cdnBase(host: string): string {
-  return `https://${host}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
-}
 
 const LOCAL_BASES = [
   'http://localhost:5500/dist/酒馆助手/Bark空回通知',
@@ -68,18 +63,6 @@ export async function readVersion(): Promise<string> {
   } catch {
     /* ignore */
   }
-  for (const host of ['cdn.jsdelivr.net', 'gcore.jsdelivr.net'] as const) {
-    try {
-      const res = await fetch(`${cdnBase(host)}/version.json`, { cache: 'no-store' });
-      if (!res.ok) continue;
-      const data = (await res.json()) as { version?: unknown };
-      if (typeof data.version === 'string' && data.version.length > 0) {
-        return resolveVersion(data.version, host);
-      }
-    } catch {
-      /* try next */
-    }
-  }
   for (const base of LOCAL_BASES) {
     try {
       const res = await fetch(`${normalizeBase(base)}/version.json`, { cache: 'no-store' });
@@ -112,8 +95,6 @@ function mainUrlCandidates(version: string): { label: string; url: string }[] {
   return [
     ...LOCAL_BASES.map(base => ({ label: 'local', url: `${normalizeBase(base)}/main.js${q}` })),
     { label: 'raw', url: `${RAW_BASE}/main.js${q}` },
-    { label: 'cdn', url: `${cdnBase('cdn.jsdelivr.net')}/main.js${q}` },
-    { label: 'gcore', url: `${cdnBase('gcore.jsdelivr.net')}/main.js${q}` },
   ];
 }
 

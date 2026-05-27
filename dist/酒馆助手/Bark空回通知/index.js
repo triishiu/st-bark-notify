@@ -1,26 +1,22 @@
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 const REPO = 'triishiu/st-bark-notify';
-/** 与 GitHub / 导入 JSON 的 @main 一致 */
+/** 与 raw.githubusercontent.com 分支一致 */
 const GIT_BRANCH = 'main';
-/** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.11';
+/** 控制台可见，用于确认是否加载到最新脚本 */
+const SCRIPT_VERSION = '2.3.12';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
 
 ;// ./src/酒馆助手/Bark空回通知/bootstrap.ts
 /**
- * 引导：JSON 固定 @main/index.js，发版后用户只刷新页面。
- * version / main 优先 raw.githubusercontent（跟 GitHub 同步），CDN @main 作备选；CI 会 purge jsDelivr。
+ * 引导：不用任何 CDN，仅从 raw GitHub（与 main 同步）或本机 5500 开发服务加载。
  */
 
 
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
-function cdnBase(host) {
-    return `https://${host}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
-}
 const LOCAL_BASES = [
     'http://localhost:5500/dist/酒馆助手/Bark空回通知',
     'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
@@ -72,20 +68,6 @@ async function readVersion() {
     catch {
         /* ignore */
     }
-    for (const host of ['cdn.jsdelivr.net', 'gcore.jsdelivr.net']) {
-        try {
-            const res = await fetch(`${cdnBase(host)}/version.json`, { cache: 'no-store' });
-            if (!res.ok)
-                continue;
-            const data = (await res.json());
-            if (typeof data.version === 'string' && data.version.length > 0) {
-                return resolveVersion(data.version, host);
-            }
-        }
-        catch {
-            /* try next */
-        }
-    }
     for (const base of LOCAL_BASES) {
         try {
             const res = await fetch(`${normalizeBase(base)}/version.json`, { cache: 'no-store' });
@@ -119,8 +101,6 @@ function mainUrlCandidates(version) {
     return [
         ...LOCAL_BASES.map(base => ({ label: 'local', url: `${normalizeBase(base)}/main.js${q}` })),
         { label: 'raw', url: `${RAW_BASE}/main.js${q}` },
-        { label: 'cdn', url: `${cdnBase('cdn.jsdelivr.net')}/main.js${q}` },
-        { label: 'gcore', url: `${cdnBase('gcore.jsdelivr.net')}/main.js${q}` },
     ];
 }
 async function runBootstrap(entryLabel) {
@@ -150,7 +130,7 @@ async function runBootstrap(entryLabel) {
 ;// ./src/酒馆助手/Bark空回通知/index.ts
 /**
  * 固定入口 index.js（JSON 导入本文件）。
- * 见 gen-import-json（固定 @main）；bootstrap 优先 raw GitHub 拉 main，刷新即更新。
+ * 见 gen-import-json（raw GitHub，无 CDN）；bootstrap 仅从 raw / 本机 5500 拉 main。
  */
 
 

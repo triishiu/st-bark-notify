@@ -2,10 +2,10 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 const REPO = 'triishiu/st-bark-notify';
-/** 与 GitHub / 导入 JSON 的 @main 一致 */
+/** 与 raw.githubusercontent.com 分支一致 */
 const GIT_BRANCH = 'main';
-/** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.11';
+/** 控制台可见，用于确认是否加载到最新脚本 */
+const SCRIPT_VERSION = '2.3.12';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
