@@ -36,6 +36,7 @@ function injectStyle(): void {
 #${PANEL_ID} #bn-status.is-wait { border-color: rgba(52,152,219,0.5); color: #85c1e9; background: rgba(52,152,219,0.12); }
 #${PANEL_ID} .menu_button.bn-test { background: #e94560 !important; border-color: #e94560 !important; color: #fff !important; }
 #${PANEL_ID} .menu_button.disabled { opacity: 0.55; pointer-events: none; }
+#${PANEL_ID} .bn-update-test { display: block; margin-top: 6px; font-size: 1em; color: #6ee7a0; }
 `.trim();
   $('<style>').attr('id', STYLE_ID).text(css).appendTo('head');
 }
@@ -194,6 +195,7 @@ export function mountUI(): void {
         <div id="bn-save" class="menu_button">保存设置</div>
         <div id="bn-test" class="menu_button bn-test">测试推送</div>
       </div>
+      <div class="bn-update-test">你好</div>
       <div id="bn-status"></div>
     </div>
   </div>
