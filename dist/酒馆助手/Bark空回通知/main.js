@@ -4,7 +4,7 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 const REPO = 'triishiu/st-bark-notify';
 const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
-const CDN_HOST = 'testingcf.jsdelivr.net';
+const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
 const SCRIPT_VERSION = '2.3.20';
 const PANEL_ID = 'bark-notify-ext-settings';
