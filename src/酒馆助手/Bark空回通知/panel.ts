@@ -15,7 +15,6 @@ function injectStyle(): void {
 #${PANEL_ID} .text_pole { width: 100%; box-sizing: border-box; margin: 0; padding: 4px 6px; min-height: unset; }
 #${PANEL_ID} select.text_pole { margin: 0; padding: 4px 6px; }
 #${PANEL_ID} .checkbox_label { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; line-height: 1.2; }
-#${PANEL_ID} .bn-hint { margin: 2px 0 0; padding: 0; font-size: 0.85em; opacity: 0.75; line-height: 1.3; }
 #${PANEL_ID} .bn-actions {
   display: flex; flex-direction: row; flex-wrap: nowrap; gap: 8px;
   align-items: center; margin: 6px 0 0; width: 100%;
@@ -153,7 +152,6 @@ export function mountUI(): void {
           <span>未以 &gt; 结尾时视为截断</span>
         </label>
       </div>
-      <p class="bn-hint">你好</p>
       <div class="bn-row">
         <div class="bn-field">
           <label class="bn-label" for="bn-level">通知级别</label>

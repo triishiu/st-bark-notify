@@ -74,7 +74,7 @@ async function runBootstrap(entryLabel) {
 ;// ./src/酒馆助手/Bark空回通知/index.ts
 /**
  * 固定入口 index.js（JSON 导入本文件）。
- * 干净 CDN 路径见 gen-import-json；内部用 bootstrap 拉 version + main。
+ * 见 gen-import-json（@main）；内部用 bootstrap 拉 version + main。
  */
 
 void runBootstrap('index').catch(err => {

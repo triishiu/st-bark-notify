@@ -1,11 +1,8 @@
 /**
  * 生成酒馆助手脚本导入 JSON（根目录 Bark空回通知.json）
  *
- * 干净路径（无 @main）：…/index.js
- * 需 GitHub 存在与 main 同步的 master 分支（见 bundle.yaml），否则 testingcf 会命中旧 master 快照。
- * boot.js 与 index.js 引导逻辑相同，仅作历史备选。
- *
- * 发版后用户只需刷新页面；main.js 由 version.json 带 ?v= 破缓存。
+ * CDN：testingcf + @main + index.js（引导）→ main.js?v=版本（见 version.json）
+ * 发版后用户只需刷新页面，不必改 JSON。
  *
  * 用法：npm run gen:import
  */
@@ -16,7 +13,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 const repo = 'triishiu/st-bark-notify';
 const distPath = 'dist/酒馆助手/Bark空回通知';
-const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}/${distPath}/index.js`;
+const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}@main/${distPath}/index.js`;
 
 const script = {
   type: 'script',

@@ -211,7 +211,6 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     entry: isBarkLoader
       ? {
           index: path.join(barkDistDir, 'index.ts'),
-          boot: path.join(barkDistDir, 'boot.ts'),
           main: path.join(barkDistDir, 'main.ts'),
         }
       : path.join(import.meta.dirname, entry.script),

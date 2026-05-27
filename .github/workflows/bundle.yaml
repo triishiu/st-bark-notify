@@ -52,10 +52,6 @@ jobs:
           default_author: github_actions
           message: '[bot] bundle'
 
-      # jsDelivr/testingcf 无 @branch 时走 master；仓库若只有 main 会长期命中旧 master 缓存（index.js 毒死，boot.js 等新路径不受影响）
-      - name: Sync main to master for clean CDN URLs
-        run: git push origin HEAD:refs/heads/master
-
       # 自动打版本 tag, 从而让 jsdelivr 基于版本号在 12h 内更新缓存而不是用非版本号的 7d 缓存
       - id: autotag
         if: github.repository != 'StageDog/tavern_helper_template'
