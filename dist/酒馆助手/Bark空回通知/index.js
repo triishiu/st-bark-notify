@@ -1,12 +1,16 @@
+import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klona_esm_74666e88_klona__ } from "https://testingcf.jsdelivr.net/npm/klona/+esm";
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.2.0';
+const SCRIPT_VERSION = '2.2.3';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
 
+;// external "https://testingcf.jsdelivr.net/npm/klona/+esm"
+
 ;// ./src/酒馆助手/Bark空回通知/settings.ts
+
 const defaultSettings = {
     enabled: true,
     truncatedIfNoGreaterThanEnd: true,
@@ -18,6 +22,8 @@ const defaultSettings = {
     level: 'timeSensitive',
     sound: 'default',
 };
+/** 保存后立即可用，避免 replaceVariables 与 getVariables 不同步导致检测仍用旧开关 */
+let settingsCache = null;
 function scriptVarOption() {
     const opt = { type: 'script' };
     if (typeof getScriptId === 'function') {
@@ -40,18 +46,26 @@ function parseBoolish(value, fallback) {
         return true;
     return fallback;
 }
-function loadSettings() {
+function normalizeSettings(partial) {
+    return {
+        enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
+        truncatedIfNoGreaterThanEnd: parseBoolish(partial.truncatedIfNoGreaterThanEnd, defaultSettings.truncatedIfNoGreaterThanEnd),
+        barkKey: String(partial.barkKey ?? defaultSettings.barkKey).trim(),
+        barkServer: String(partial.barkServer ?? defaultSettings.barkServer).trim() || defaultSettings.barkServer,
+        title: String(partial.title ?? defaultSettings.title).trim() || defaultSettings.title,
+        emptyMsg: String(partial.emptyMsg ?? defaultSettings.emptyMsg).trim() || defaultSettings.emptyMsg,
+        minTokens: Math.max(1, Number(partial.minTokens) || defaultSettings.minTokens),
+        level: partial.level === 'passive' || partial.level === 'active' || partial.level === 'timeSensitive'
+            ? partial.level
+            : defaultSettings.level,
+        sound: String(partial.sound ?? defaultSettings.sound),
+    };
+}
+function loadSettingsFromVariables() {
     try {
         const raw = getVariables(scriptVarOption());
         if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
-            const partial = raw;
-            const truncatedIfNoGreaterThanEnd = parseBoolish(partial.truncatedIfNoGreaterThanEnd, defaultSettings.truncatedIfNoGreaterThanEnd);
-            return {
-                ...defaultSettings,
-                ...partial,
-                enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
-                truncatedIfNoGreaterThanEnd,
-            };
+            return normalizeSettings(raw);
         }
     }
     catch {
@@ -59,8 +73,16 @@ function loadSettings() {
     }
     return { ...defaultSettings };
 }
+function loadSettings() {
+    if (!settingsCache) {
+        settingsCache = loadSettingsFromVariables();
+    }
+    return { ...settingsCache };
+}
 function saveSettings(settings) {
-    replaceVariables({ ...settings }, scriptVarOption());
+    const next = normalizeSettings(settings);
+    settingsCache = next;
+    replaceVariables(__WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klona_esm_74666e88_klona__(next), scriptVarOption());
 }
 function parseBarkKey(raw) {
     let t = String(raw || '').trim();
@@ -84,7 +106,7 @@ function readForm($root) {
     const s = loadSettings();
     const get = (id) => String($root.find(`#${id}`).val() ?? '');
     const barkKey = parseBarkKey(get('bn-key')) || s.barkKey;
-    return {
+    return normalizeSettings({
         enabled: $root.find('#bn-enabled').is(':checked'),
         truncatedIfNoGreaterThanEnd: $root.find('#bn-trunc-no-gt').is(':checked'),
         barkKey,
@@ -94,7 +116,7 @@ function readForm($root) {
         minTokens: Math.max(1, parseInt(get('bn-min-tokens'), 10) || defaultSettings.minTokens),
         level: get('bn-level') || s.level,
         sound: s.sound,
-    };
+    });
 }
 
 ;// ./src/酒馆助手/Bark空回通知/send-bark.ts
@@ -147,8 +169,11 @@ async function sendBark(message, override) {
 function getMessageBody(msg) {
     if (!msg)
         return '';
-    if (typeof msg.message === 'string')
-        return msg.message;
+    const m = msg;
+    if (typeof m.message === 'string' && m.message.length > 0)
+        return m.message;
+    if (typeof m.mes === 'string' && m.mes.length > 0)
+        return m.mes;
     const swipes = msg.swipes;
     const swipeId = msg.swipe_id ?? 0;
     if (Array.isArray(swipes) && typeof swipes[swipeId] === 'string')
@@ -182,22 +207,11 @@ function extractReplyText(raw) {
         return '';
     return stripThinkAndComments(raw).replace(/<[^>]+>/g, '').trim();
 }
-function estimateTokens(text) {
-    const t = extractReplyText(text);
-    if (!t)
+function countTokensHeuristic(text) {
+    if (!text)
         return 0;
-    if (typeof getTokenCount === 'function') {
-        try {
-            const n = getTokenCount(t);
-            if (typeof n === 'number' && n >= 0)
-                return n;
-        }
-        catch {
-            /* fallback */
-        }
-    }
     let tokens = 0;
-    for (const ch of t) {
+    for (const ch of text) {
         if (/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/.test(ch))
             tokens += 1;
         else if (!/\s/.test(ch))
@@ -205,43 +219,120 @@ function estimateTokens(text) {
     }
     return Math.ceil(tokens);
 }
+function countTokensWithTavern(text) {
+    if (!text)
+        return 0;
+    if (typeof getTokenCount === 'function') {
+        try {
+            const n = getTokenCount(text);
+            if (typeof n === 'number' && n >= 0)
+                return n;
+        }
+        catch {
+            /* fallback */
+        }
+    }
+    return null;
+}
+function tokenCountFromExtra(extra) {
+    const n = extra?.token_count;
+    return typeof n === 'number' && n >= 0 ? n : null;
+}
+/** 与酒馆楼层「633t」一致：优先 extra.token_count，否则对原文（保留 HTML）计数 */
+function readStoredTokenCount(msg) {
+    const swipeId = msg.swipe_id ?? 0;
+    const infos = msg.swipes_info;
+    if (Array.isArray(infos) && infos[swipeId] && typeof infos[swipeId] === 'object') {
+        const fromSwipe = tokenCountFromExtra(infos[swipeId].extra);
+        if (fromSwipe != null)
+            return fromSwipe;
+    }
+    const fromMsg = tokenCountFromExtra(msg.extra);
+    if (fromMsg != null)
+        return fromMsg;
+    try {
+        const chat = SillyTavern?.getContext?.()?.chat;
+        const mid = msg.message_id;
+        if (chat && mid != null && chat[mid]) {
+            const st = chat[mid];
+            if (Array.isArray(st.swipes_info) && st.swipes_info[swipeId]) {
+                const fromStSwipe = tokenCountFromExtra(st.swipes_info[swipeId].extra);
+                if (fromStSwipe != null)
+                    return fromStSwipe;
+            }
+            return tokenCountFromExtra(st.extra);
+        }
+    }
+    catch {
+        /* ignore */
+    }
+    return null;
+}
+function estimateTokensForThreshold(rawBody, storedTokenCount) {
+    if (storedTokenCount != null)
+        return storedTokenCount;
+    const afterThink = stripThinkAndComments(rawBody).trim();
+    const candidates = [];
+    const rawCounted = countTokensWithTavern(afterThink);
+    candidates.push(rawCounted ?? countTokensHeuristic(afterThink));
+    const visible = extractReplyText(rawBody);
+    const visibleCounted = countTokensWithTavern(visible);
+    candidates.push(visibleCounted ?? countTokensHeuristic(visible));
+    return Math.max(...candidates, 0);
+}
 /** 去掉 think 后原文仍较长：多为 HTML 状态栏，不应按「空回」处理 */
 function hasSubstantialRawContent(raw) {
     const remain = stripThinkAndComments(raw);
     if (remain.length >= 48)
         return true;
-    return estimateTokens(raw) >= 40;
+    return estimateTokensForThreshold(raw, null) >= 40;
 }
-function analyzeReply(text, minTokens, truncatedIfNoGreaterThanEnd) {
+function analyzeReply(text, minTokens, truncatedIfNoGreaterThanEnd, storedTokenCount) {
     const visible = extractReplyText(text);
-    const tokens = estimateTokens(text);
+    const tokens = estimateTokensForThreshold(text, storedTokenCount);
+    const stTokens = storedTokenCount;
     const threshold = Number(minTokens) > 0 ? Number(minTokens) : defaultSettings.minTokens;
     if (!visible) {
         if (hasSubstantialRawContent(text)) {
             /* 有实质内容但去标签后为空，继续走截断规则 */
         }
         else {
-            return { shouldNotify: true, reason: '空回', tokens };
+            return { shouldNotify: true, reason: '空回', tokens, stTokens };
         }
     }
     if (/^[.\s…。·\-_*#?？!！,，;；:：'""`~～^]+$/u.test(visible)) {
-        return { shouldNotify: true, reason: '无效短回复', tokens };
+        return { shouldNotify: true, reason: '无效短回复', tokens, stTokens };
     }
     if (truncatedIfNoGreaterThanEnd && !text.trimEnd().endsWith('>')) {
-        return { shouldNotify: true, reason: '截断(未以>结尾)', tokens };
+        return { shouldNotify: true, reason: '截断(未以>结尾)', tokens, stTokens };
     }
     if (tokens < threshold) {
         // HTML 状态栏等：原文很长但去标签后 token 为 0，不算过短截断
         if (!visible && hasSubstantialRawContent(text)) {
-            return { shouldNotify: false, reason: '', tokens };
+            return { shouldNotify: false, reason: '', tokens, stTokens };
         }
-        return { shouldNotify: true, reason: '截断(过短)', tokens };
+        return { shouldNotify: true, reason: '截断(过短)', tokens, stTokens };
     }
-    return { shouldNotify: false, reason: '', tokens };
+    return { shouldNotify: false, reason: '', tokens, stTokens };
 }
 let generationActive = false;
+let generationActiveClearTimer = null;
 const checkTimers = new Map();
 const notifiedIds = new Set();
+function setGenerationActive(active) {
+    generationActive = active;
+    if (generationActiveClearTimer) {
+        clearTimeout(generationActiveClearTimer);
+        generationActiveClearTimer = null;
+    }
+    if (active) {
+        generationActiveClearTimer = setTimeout(() => {
+            generationActive = false;
+            generationActiveClearTimer = null;
+            console.warn('[Bark通知] 未收到 GENERATION_ENDED，已自动结束「生成中」状态');
+        }, 180_000);
+    }
+}
 function clearPendingChecks() {
     for (const timer of checkTimers.values())
         clearTimeout(timer);
@@ -252,11 +343,11 @@ function resetNotifyStateForMessage(message_id) {
         return;
     notifiedIds.delete(normalizeMessageId(message_id));
 }
-/** 仅在生成结束后检测；无 GENERATION_ENDED 时用 MESSAGE_UPDATED 防抖兜底 */
+/** 生成结束后检测；ENDED 缺失时用 MESSAGE_UPDATED / MESSAGE_RECEIVED 兜底 */
 function bindGenerationGate() {
     if (tavern_events.GENERATION_STARTED) {
         eventOn(tavern_events.GENERATION_STARTED, () => {
-            generationActive = true;
+            setGenerationActive(true);
             clearPendingChecks();
             try {
                 const last = getChatMessages(-1)[0];
@@ -269,19 +360,20 @@ function bindGenerationGate() {
     }
     if (tavern_events.GENERATION_STOPPED) {
         eventOn(tavern_events.GENERATION_STOPPED, () => {
-            generationActive = false;
+            setGenerationActive(false);
         });
     }
     if (tavern_events.GENERATION_ENDED) {
         eventOn(tavern_events.GENERATION_ENDED, (message_id) => {
-            generationActive = false;
+            setGenerationActive(false);
             clearPendingChecks();
             resetNotifyStateForMessage(message_id);
             scheduleCheck(message_id, 'generation_ended');
         });
-        return;
     }
-    console.warn('[Bark通知] 无 GENERATION_ENDED，使用 MESSAGE_UPDATED 防抖兜底（3s）');
+    else {
+        console.warn('[Bark通知] 无 GENERATION_ENDED 事件，依赖 MESSAGE_UPDATED 兜底');
+    }
     if (tavern_events.MESSAGE_UPDATED) {
         eventOn(tavern_events.MESSAGE_UPDATED, (message_id) => {
             scheduleCheck(message_id, 'updated_settled');
@@ -324,17 +416,22 @@ function bindStopDetector() {
             eventOn(tavern_events[name], () => markUserStopped(name));
     });
 }
-async function readAssistantBody(message_id, trigger) {
+function fetchAssistantMessage(message_id) {
     const id = normalizeMessageId(message_id);
-    const attempts = trigger.includes('generation_ended') ? 4 : 1;
+    let msg = getChatMessages(id, { include_swipes: true })[0];
+    if (!isAssistantMessage(msg)) {
+        msg = getChatMessages(-1, { include_swipes: true })[0];
+    }
+    if (!isAssistantMessage(msg)) {
+        msg = getChatMessages(-1, { role: 'assistant', include_swipes: true })[0];
+    }
+    return isAssistantMessage(msg) ? msg : undefined;
+}
+async function readAssistantBody(message_id, trigger) {
+    const attempts = trigger.includes('generation_ended') || trigger.includes('updated_settled') ? 4 : 1;
     for (let i = 0; i < attempts; i++) {
-        let msg = getChatMessages(id)[0];
-        if (!isAssistantMessage(msg)) {
-            const last = getChatMessages(-1)[0];
-            if (isAssistantMessage(last))
-                msg = last;
-        }
-        if (!isAssistantMessage(msg))
+        const msg = fetchAssistantMessage(message_id);
+        if (!msg)
             return null;
         const body = getMessageBody(msg);
         if (body.length > 0 || i === attempts - 1)
@@ -348,8 +445,13 @@ async function checkAndNotify(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim())
         return;
-    if (generationActive)
+    const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
+    if (generationActive && !settled) {
+        scheduleCheck(id, 'wait_gen');
         return;
+    }
+    if (settled)
+        setGenerationActive(false);
     if (notifiedIds.has(id))
         return;
     try {
@@ -358,9 +460,12 @@ async function checkAndNotify(message_id, trigger) {
             return;
         const { msg, body } = read;
         const truncGt = s.truncatedIfNoGreaterThanEnd;
-        const analysis = analyzeReply(body, s.minTokens, truncGt);
+        const stTokens = readStoredTokenCount(msg);
+        const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
         const visibleLen = extractReplyText(body).length;
-        console.info(`[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens} visible=${visibleLen} raw=${body.length}` +
+        console.info(`[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens}` +
+            (analysis.stTokens != null ? ` stTokens=${analysis.stTokens}` : '') +
+            ` visible=${visibleLen} raw=${body.length}` +
             ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
             ` truncGt=${truncGt} minTokens=${s.minTokens}`);
         if (!analysis.shouldNotify)
@@ -460,7 +565,7 @@ function bindUiEvents($root) {
             return;
         }
         saveSettings(form);
-        setStatus(`✅ 已保存 Key: ${form.barkKey.slice(0, 6)}…`, 'ok');
+        setStatus(`✅ 已保存（>截断: ${form.truncatedIfNoGreaterThanEnd ? '开' : '关'}）Key: ${form.barkKey.slice(0, 6)}…`, 'ok');
         toast('ok', 'Bark 设置已保存');
     });
     $root.on('click', '#bn-test', async function (e) {
@@ -492,8 +597,9 @@ function bindUiEvents($root) {
             $(this).val(key);
     });
     $root.on('change', '#bn-enabled, #bn-trunc-no-gt, #bn-level, #bn-min-tokens', () => {
-        saveSettings(readForm($root));
-        setStatus('设置已保存', 'ok');
+        const form = readForm($root);
+        saveSettings(form);
+        setStatus(`设置已保存（>截断: ${form.truncatedIfNoGreaterThanEnd ? '开' : '关'}）`, 'ok');
     });
 }
 function focusExtensionsSettings() {
@@ -536,7 +642,6 @@ function mountUI() {
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
         </label>
-        <p class="bn-hint">关闭后不会因缺少 &gt; 提醒；仍会检测空回，并按下方 token 阈值判断过短。</p>
       </div>
       <div class="bn-row">
         <div class="bn-field">
@@ -599,6 +704,11 @@ function teardownUI() {
 
 bindStopDetector();
 bindGenerationGate();
+eventOn(tavern_events.MESSAGE_RECEIVED, (message_id, type) => {
+    if (type === 'append')
+        return;
+    scheduleCheck(message_id, `received:${type ?? 'unknown'}`);
+});
 eventOn(getButtonEvent('Bark通知设置'), () => focusExtensionsSettings());
 $(() => {
     mountUI();

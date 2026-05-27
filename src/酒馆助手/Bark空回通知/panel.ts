@@ -69,7 +69,10 @@ function bindUiEvents($root: JQuery<HTMLElement>): void {
       return;
     }
     saveSettings(form);
-    setStatus(`✅ 已保存 Key: ${form.barkKey.slice(0, 6)}…`, 'ok');
+    setStatus(
+      `✅ 已保存（>截断: ${form.truncatedIfNoGreaterThanEnd ? '开' : '关'}）Key: ${form.barkKey.slice(0, 6)}…`,
+      'ok',
+    );
     toast('ok', 'Bark 设置已保存');
   });
 
@@ -101,8 +104,9 @@ function bindUiEvents($root: JQuery<HTMLElement>): void {
   });
 
   $root.on('change', '#bn-enabled, #bn-trunc-no-gt, #bn-level, #bn-min-tokens', () => {
-    saveSettings(readForm($root));
-    setStatus('设置已保存', 'ok');
+    const form = readForm($root);
+    saveSettings(form);
+    setStatus(`设置已保存（>截断: ${form.truncatedIfNoGreaterThanEnd ? '开' : '关'}）`, 'ok');
   });
 }
 
@@ -148,7 +152,6 @@ export function mountUI(): void {
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
         </label>
-        <p class="bn-hint">关闭后不会因缺少 &gt; 提醒；仍会检测空回，并按下方 token 阈值判断过短。</p>
       </div>
       <div class="bn-row">
         <div class="bn-field">

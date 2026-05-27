@@ -1,3 +1,5 @@
+import { klona } from 'klona';
+
 export interface Settings {
   enabled: boolean;
   /** 未以 > 结尾时视为截断（默认开启） */
@@ -23,6 +25,9 @@ export const defaultSettings: Settings = {
   sound: 'default',
 };
 
+/** 保存后立即可用，避免 replaceVariables 与 getVariables 不同步导致检测仍用旧开关 */
+let settingsCache: Settings | null = null;
+
 function scriptVarOption(): { type: 'script'; script_id?: string } {
   const opt: { type: 'script'; script_id?: string } = { type: 'script' };
   if (typeof getScriptId === 'function') {
@@ -43,21 +48,31 @@ function parseBoolish(value: unknown, fallback: boolean): boolean {
   return fallback;
 }
 
-export function loadSettings(): Settings {
+export function normalizeSettings(partial: Partial<Settings>): Settings {
+  return {
+    enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
+    truncatedIfNoGreaterThanEnd: parseBoolish(
+      partial.truncatedIfNoGreaterThanEnd,
+      defaultSettings.truncatedIfNoGreaterThanEnd,
+    ),
+    barkKey: String(partial.barkKey ?? defaultSettings.barkKey).trim(),
+    barkServer: String(partial.barkServer ?? defaultSettings.barkServer).trim() || defaultSettings.barkServer,
+    title: String(partial.title ?? defaultSettings.title).trim() || defaultSettings.title,
+    emptyMsg: String(partial.emptyMsg ?? defaultSettings.emptyMsg).trim() || defaultSettings.emptyMsg,
+    minTokens: Math.max(1, Number(partial.minTokens) || defaultSettings.minTokens),
+    level:
+      partial.level === 'passive' || partial.level === 'active' || partial.level === 'timeSensitive'
+        ? partial.level
+        : defaultSettings.level,
+    sound: String(partial.sound ?? defaultSettings.sound),
+  };
+}
+
+function loadSettingsFromVariables(): Settings {
   try {
     const raw = getVariables(scriptVarOption());
     if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) {
-      const partial = raw as Partial<Settings>;
-      const truncatedIfNoGreaterThanEnd = parseBoolish(
-        partial.truncatedIfNoGreaterThanEnd,
-        defaultSettings.truncatedIfNoGreaterThanEnd,
-      );
-      return {
-        ...defaultSettings,
-        ...partial,
-        enabled: parseBoolish(partial.enabled, defaultSettings.enabled),
-        truncatedIfNoGreaterThanEnd,
-      };
+      return normalizeSettings(raw as Partial<Settings>);
     }
   } catch {
     /* ignore */
@@ -65,8 +80,17 @@ export function loadSettings(): Settings {
   return { ...defaultSettings };
 }
 
+export function loadSettings(): Settings {
+  if (!settingsCache) {
+    settingsCache = loadSettingsFromVariables();
+  }
+  return { ...settingsCache };
+}
+
 export function saveSettings(settings: Settings): void {
-  replaceVariables({ ...settings }, scriptVarOption());
+  const next = normalizeSettings(settings);
+  settingsCache = next;
+  replaceVariables(klona(next), scriptVarOption());
 }
 
 export function parseBarkKey(raw: string): string {
@@ -88,7 +112,7 @@ export function readForm($root: JQuery<HTMLElement>): Settings {
   const s = loadSettings();
   const get = (id: string): string => String($root.find(`#${id}`).val() ?? '');
   const barkKey = parseBarkKey(get('bn-key')) || s.barkKey;
-  return {
+  return normalizeSettings({
     enabled: $root.find('#bn-enabled').is(':checked'),
     truncatedIfNoGreaterThanEnd: $root.find('#bn-trunc-no-gt').is(':checked'),
     barkKey,
@@ -98,5 +122,5 @@ export function readForm($root: JQuery<HTMLElement>): Settings {
     minTokens: Math.max(1, parseInt(get('bn-min-tokens'), 10) || defaultSettings.minTokens),
     level: (get('bn-level') as Settings['level']) || s.level,
     sound: s.sound,
-  };
+  });
 }
