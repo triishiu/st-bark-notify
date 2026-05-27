@@ -2,7 +2,7 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.2';
+const SCRIPT_VERSION = '2.3.3';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -319,6 +319,14 @@ let generationActive = false;
 let generationActiveClearTimer = null;
 const checkTimers = new Map();
 const notifiedIds = new Set();
+const notifyInFlight = new Set();
+function isGenerationActive() {
+    return generationActive;
+}
+function notifyKeyFor(message_id, msg) {
+    const mid = msg?.message_id;
+    return normalizeMessageId(mid != null ? mid : message_id);
+}
 function setGenerationActive(active) {
     generationActive = active;
     if (generationActiveClearTimer) {
@@ -428,7 +436,8 @@ function fetchAssistantMessage(message_id) {
     return isAssistantMessage(msg) ? msg : undefined;
 }
 async function readAssistantBody(message_id, trigger) {
-    const attempts = trigger.includes('generation_ended') || trigger.includes('updated_settled') ? 4 : 1;
+    const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
+    const attempts = settled ? 3 : 1;
     for (let i = 0; i < attempts; i++) {
         const msg = fetchAssistantMessage(message_id);
         if (!msg)
@@ -436,7 +445,8 @@ async function readAssistantBody(message_id, trigger) {
         const body = getMessageBody(msg);
         if (body.length > 0 || i === attempts - 1)
             return { msg, body };
-        await new Promise(r => setTimeout(r, 300));
+        if (settled)
+            await new Promise(r => setTimeout(r, 200));
     }
     return null;
 }
@@ -452,13 +462,16 @@ async function checkAndNotify(message_id, trigger) {
     }
     if (settled)
         setGenerationActive(false);
-    if (notifiedIds.has(id))
-        return;
     try {
         const read = await readAssistantBody(message_id, trigger);
         if (!read)
             return;
         const { msg, body } = read;
+        const key = notifyKeyFor(id, msg);
+        if (notifiedIds.has(key) || notifyInFlight.has(key)) {
+            console.info(`[Bark通知] 跳过重复通知 key=${key} trigger=${trigger}`);
+            return;
+        }
         const truncGt = s.truncatedIfNoGreaterThanEnd;
         const stTokens = readStoredTokenCount(msg);
         const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
@@ -470,8 +483,14 @@ async function checkAndNotify(message_id, trigger) {
             ` truncGt=${truncGt} minTokens=${s.minTokens}`);
         if (!analysis.shouldNotify)
             return;
-        notifiedIds.add(msg.message_id ?? id);
-        await sendBark(s.emptyMsg, s);
+        notifiedIds.add(key);
+        notifyInFlight.add(key);
+        try {
+            await sendBark(s.emptyMsg, s);
+        }
+        finally {
+            notifyInFlight.delete(key);
+        }
     }
     catch (err) {
         console.error('[Bark通知] 检测出错:', err);
@@ -479,17 +498,25 @@ async function checkAndNotify(message_id, trigger) {
 }
 function scheduleCheck(message_id, trigger) {
     const id = normalizeMessageId(message_id);
+    if (/^received:(swipe|append)$/i.test(trigger))
+        return;
     const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
-    // 流式输出会连续 MESSAGE_UPDATED；若每次重置 3s 定时器，通知会被推到生成结束后很久（体感 ~10s）
+    if (trigger.includes('generation_ended')) {
+        if (checkTimers.has(id)) {
+            clearTimeout(checkTimers.get(id));
+            checkTimers.delete(id);
+        }
+    }
+    // 流式 MESSAGE_UPDATED 不重置定时器，避免拖到十几秒
     if (settled && checkTimers.has(id))
         return;
     if (checkTimers.has(id))
         clearTimeout(checkTimers.get(id));
     const delay = trigger.includes('generation_ended')
-        ? 800
+        ? 500
         : trigger.includes('updated_settled')
-            ? 1200
-            : 800;
+            ? 800
+            : 600;
     checkTimers.set(id, setTimeout(() => {
         checkTimers.delete(id);
         void checkAndNotify(id, trigger);
@@ -707,8 +734,11 @@ function teardownUI() {
 
 bindStopDetector();
 bindGenerationGate();
+// 仅作 GENERATION_ENDED 缺失时的兜底；swipe 会误报且与 generation_ended 重复推送
 eventOn(tavern_events.MESSAGE_RECEIVED, (message_id, type) => {
-    if (type === 'append')
+    if (type === 'append' || type === 'swipe')
+        return;
+    if (isGenerationActive())
         return;
     scheduleCheck(message_id, `received:${type ?? 'unknown'}`);
 });

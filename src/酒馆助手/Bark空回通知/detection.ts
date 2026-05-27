@@ -168,6 +168,16 @@ let generationActive = false;
 let generationActiveClearTimer: ReturnType<typeof setTimeout> | null = null;
 const checkTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
 const notifiedIds = new Set<number | string>();
+const notifyInFlight = new Set<number | string>();
+
+export function isGenerationActive(): boolean {
+  return generationActive;
+}
+
+function notifyKeyFor(message_id: number | string, msg?: { message_id?: number }): number | string {
+  const mid = msg?.message_id;
+  return normalizeMessageId(mid != null ? mid : message_id);
+}
 
 function setGenerationActive(active: boolean): void {
   generationActive = active;
@@ -287,14 +297,15 @@ async function readAssistantBody(
   message_id: number | string,
   trigger: string,
 ): Promise<{ msg: ReturnType<typeof getChatMessages>[0]; body: string } | null> {
-  const attempts =
-    trigger.includes('generation_ended') || trigger.includes('updated_settled') ? 4 : 1;
+  const settled =
+    trigger.includes('generation_ended') || trigger.includes('updated_settled');
+  const attempts = settled ? 3 : 1;
   for (let i = 0; i < attempts; i++) {
     const msg = fetchAssistantMessage(message_id);
     if (!msg) return null;
     const body = getMessageBody(msg);
     if (body.length > 0 || i === attempts - 1) return { msg, body };
-    await new Promise(r => setTimeout(r, 300));
+    if (settled) await new Promise(r => setTimeout(r, 200));
   }
   return null;
 }
@@ -310,11 +321,17 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     return;
   }
   if (settled) setGenerationActive(false);
-  if (notifiedIds.has(id)) return;
+
   try {
     const read = await readAssistantBody(message_id, trigger);
     if (!read) return;
     const { msg, body } = read;
+    const key = notifyKeyFor(id, msg);
+    if (notifiedIds.has(key) || notifyInFlight.has(key)) {
+      console.info(`[Bark通知] 跳过重复通知 key=${key} trigger=${trigger}`);
+      return;
+    }
+
     const truncGt = s.truncatedIfNoGreaterThanEnd;
     const stTokens = readStoredTokenCount(msg);
     const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
@@ -327,8 +344,14 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
         ` truncGt=${truncGt} minTokens=${s.minTokens}`,
     );
     if (!analysis.shouldNotify) return;
-    notifiedIds.add(msg.message_id ?? id);
-    await sendBark(s.emptyMsg, s);
+
+    notifiedIds.add(key);
+    notifyInFlight.add(key);
+    try {
+      await sendBark(s.emptyMsg, s);
+    } finally {
+      notifyInFlight.delete(key);
+    }
   } catch (err) {
     console.error('[Bark通知] 检测出错:', err);
   }
@@ -336,17 +359,27 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
 
 export function scheduleCheck(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
+  if (/^received:(swipe|append)$/i.test(trigger)) return;
+
   const settled =
     trigger.includes('generation_ended') || trigger.includes('updated_settled');
-  // 流式输出会连续 MESSAGE_UPDATED；若每次重置 3s 定时器，通知会被推到生成结束后很久（体感 ~10s）
+
+  if (trigger.includes('generation_ended')) {
+    if (checkTimers.has(id)) {
+      clearTimeout(checkTimers.get(id)!);
+      checkTimers.delete(id);
+    }
+  }
+
+  // 流式 MESSAGE_UPDATED 不重置定时器，避免拖到十几秒
   if (settled && checkTimers.has(id)) return;
 
   if (checkTimers.has(id)) clearTimeout(checkTimers.get(id)!);
   const delay = trigger.includes('generation_ended')
-    ? 800
+    ? 500
     : trigger.includes('updated_settled')
-      ? 1200
-      : 800;
+      ? 800
+      : 600;
   checkTimers.set(
     id,
     setTimeout(() => {
