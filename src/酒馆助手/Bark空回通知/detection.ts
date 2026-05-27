@@ -250,7 +250,7 @@ function setGenerationActive(active: boolean): void {
       console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
       traceNotify('超时兜底检测');
       finalizeLastAssistant('generation_timeout');
-    }, 90_000);
+    }, 10_000); // 改为 10 秒
   }
 }
 
