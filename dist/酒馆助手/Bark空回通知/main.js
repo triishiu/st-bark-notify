@@ -1,8 +1,11 @@
 import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klona_esm_74666e88_klona__ } from "https://testingcf.jsdelivr.net/npm/klona/+esm";
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
+const REPO = 'triishiu/st-bark-notify';
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.9';
+const SCRIPT_VERSION = '2.3.10';
+/** 与本次 build 的 git 提交一致；postbuild 写入。勿指望 @main 刷新即更新。 */
+const CDN_GIT_REF = '71cca44';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';

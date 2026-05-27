@@ -1,35 +1,55 @@
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
+const REPO = 'triishiu/st-bark-notify';
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.9';
+const SCRIPT_VERSION = '2.3.10';
+/** 与本次 build 的 git 提交一致；postbuild 写入。勿指望 @main 刷新即更新。 */
+const CDN_GIT_REF = '71cca44';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
 
+;// external "Vue"
+const external_Vue_namespaceObject = Vue;
 ;// ./src/酒馆助手/Bark空回通知/bootstrap.ts
 /**
- * 引导：JSON 导入须用 cdn.jsdelivr.net@main（见 gen-import-json）。
- * testingcf 的 main.js 常「URL 带新版本、文件体仍是旧版」，禁止用于加载 main。
+ * 引导：index 与 main 必须用同一 git ref（见 CDN_GIT_REF / 调用栈里的 @提交）。
+ * jsDelivr 的 @main 分支别名缓存可达约 7 天，刷新页面不会立刻拿到新 main。
  */
 
-const REPO = 'triishiu/st-bark-notify';
+
+
+
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
-const CDN_MAIN = `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
-const CDN_GCORE = `https://gcore.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
-/** 读 version.json（必须 @main；优先官方 CDN） */
-const VERSION_BASES = [
-    'http://localhost:5500/dist/酒馆助手/Bark空回通知',
-    'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-    CDN_MAIN,
-    CDN_GCORE,
-];
-/** 加载 main.js（校验文件内 SCRIPT_VERSION，不用 testingcf） */
-const MAIN_BASES = [
-    'http://localhost:5500/dist/酒馆助手/Bark空回通知',
-    'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-    CDN_MAIN,
-    CDN_GCORE,
-];
+function detectCdnRefFromStack() {
+    try {
+        const stack = new Error().stack ?? '';
+        const m = stack.match(new RegExp(`gh/${REPO.replace('/', '\\/')}@([^/?#\\s]+)`, 'i')) ||
+            stack.match(new RegExp(`raw\\.githubusercontent\\.com/${REPO.replace('/', '\\/')}/([^/?#\\s]+)`, 'i'));
+        return m?.[1] ?? null;
+    }
+    catch {
+        return null;
+    }
+}
+/** 与 index.js 的 import URL 同 ref，避免 index@提交 + main@main 混用 */
+function resolveCdnRef() {
+    const fromStack = detectCdnRefFromStack();
+    if (fromStack)
+        return fromStack;
+    return CDN_GIT_REF;
+}
+function cdnBase(host, ref) {
+    return `https://${host}/gh/${REPO}@${ref}/${DIST_REL}`;
+}
+function basesForRef(ref) {
+    return [
+        'http://localhost:5500/dist/酒馆助手/Bark空回通知',
+        'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
+        cdnBase('cdn.jsdelivr.net', ref),
+        cdnBase('gcore.jsdelivr.net', ref),
+    ];
+}
 function semverOlder(a, b) {
     const pa = a.split('.').map(n => Number(n) || 0);
     const pb = b.split('.').map(n => Number(n) || 0);
@@ -45,35 +65,34 @@ function parseMainScriptVersion(source) {
     const m = source.match(/SCRIPT_VERSION\s*=\s*['"]([^'"]+)['"]/);
     return m?.[1] ?? null;
 }
-/** 拒绝「?v=2.3.8 但文件里仍是 2.3.0」的 CDN 脏缓存 */
 function assertMainContentVersion(source, expected, mainUrl) {
     const got = parseMainScriptVersion(source);
     if (!got) {
         throw new Error(`main.js 未含 SCRIPT_VERSION: ${mainUrl}`);
     }
     if (semverOlder(got, expected)) {
-        throw new Error(`main.js 内容 v${got} < 期望 v${expected}（${mainUrl}，CDN 体与 ?v= 不一致）`);
+        throw new Error(`main.js 内容 v${got} < 期望 v${expected}（${mainUrl}）`);
     }
 }
 function normalizeBase(base) {
     return base.replace(/\/?$/, '');
 }
-async function readVersion() {
+async function readVersion(cdnRef) {
     try {
-        const res = await fetch(`https://raw.githubusercontent.com/${REPO}/main/${DIST_REL}/version.json`, {
+        const res = await fetch(`https://raw.githubusercontent.com/${REPO}/${cdnRef}/${DIST_REL}/version.json`, {
             cache: 'no-store',
         });
         if (res.ok) {
             const data = (await res.json());
             if (typeof data.version === 'string' && data.version.length > 0) {
-                return resolveVersion(data.version, 'raw.githubusercontent');
+                return resolveVersion(data.version, `raw.githubusercontent@${cdnRef}`);
             }
         }
     }
     catch {
         /* ignore */
     }
-    for (const base of VERSION_BASES) {
+    for (const base of basesForRef(cdnRef)) {
         try {
             const res = await fetch(`${normalizeBase(base)}/version.json`, { cache: 'no-store' });
             if (!res.ok)
@@ -110,9 +129,12 @@ async function importMainFromSource(mainUrl, source, expectedVersion) {
     }
 }
 async function runBootstrap(entryLabel) {
-    const version = await readVersion();
+    const cdnRef = resolveCdnRef();
+    console.info(`[Bark通知] CDN ref=${cdnRef}（index 与 main 同源）`);
+    const version = await readVersion(cdnRef);
+    const mainBases = basesForRef(cdnRef);
     let lastErr;
-    for (const base of MAIN_BASES) {
+    for (const base of mainBases) {
         const mainUrl = `${normalizeBase(base)}/main.js?v=${encodeURIComponent(version)}`;
         try {
             console.info(`[Bark通知] ${entryLabel} → ${mainUrl}`);
