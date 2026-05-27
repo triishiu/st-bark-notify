@@ -11,11 +11,6 @@ export const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
 const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
 
-const LOCAL_BASES = [
-  'http://localhost:5500/dist/酒馆助手/Bark空回通知',
-  'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-];
-
 function semverOlder(a: string, b: string): boolean {
   const pa = a.split('.').map(n => Number(n) || 0);
   const pb = b.split('.').map(n => Number(n) || 0);
@@ -63,18 +58,6 @@ export async function readVersion(): Promise<string> {
   } catch {
     /* ignore */
   }
-  for (const base of LOCAL_BASES) {
-    try {
-      const res = await fetch(`${normalizeBase(base)}/version.json`, { cache: 'no-store' });
-      if (!res.ok) continue;
-      const data = (await res.json()) as { version?: unknown };
-      if (typeof data.version === 'string' && data.version.length > 0) {
-        return resolveVersion(data.version, base);
-      }
-    } catch {
-      /* try next */
-    }
-  }
   return SCRIPT_VERSION;
 }
 
@@ -92,7 +75,6 @@ async function importMainFromSource(mainUrl: string, source: string, expectedVer
 function mainUrlCandidates(version: string): { label: string; url: string }[] {
   const q = `?v=${encodeURIComponent(version)}`;
   return [
-    ...LOCAL_BASES.map(base => ({ label: 'local', url: `${normalizeBase(base)}/main.js${q}` })),
     { label: 'testingcf', url: `${CDN_BASE}/main.js${q}` },
     { label: 'raw', url: `${RAW_BASE}/main.js${q}` },
   ];

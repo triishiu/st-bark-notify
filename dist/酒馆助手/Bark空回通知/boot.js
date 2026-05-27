@@ -5,7 +5,7 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.18';
+const SCRIPT_VERSION = '2.3.19';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -20,10 +20,6 @@ const IFRAME_NAME = 'bark-notify-iframe';
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
 const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
-const LOCAL_BASES = [
-    'http://localhost:5500/dist/酒馆助手/Bark空回通知',
-    'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-];
 function semverOlder(a, b) {
     const pa = a.split('.').map(n => Number(n) || 0);
     const pb = b.split('.').map(n => Number(n) || 0);
@@ -69,20 +65,6 @@ async function readVersion() {
     catch {
         /* ignore */
     }
-    for (const base of LOCAL_BASES) {
-        try {
-            const res = await fetch(`${normalizeBase(base)}/version.json`, { cache: 'no-store' });
-            if (!res.ok)
-                continue;
-            const data = (await res.json());
-            if (typeof data.version === 'string' && data.version.length > 0) {
-                return resolveVersion(data.version, base);
-            }
-        }
-        catch {
-            /* try next */
-        }
-    }
     return SCRIPT_VERSION;
 }
 async function importMainFromSource(mainUrl, source, expectedVersion) {
@@ -99,7 +81,6 @@ async function importMainFromSource(mainUrl, source, expectedVersion) {
 function mainUrlCandidates(version) {
     const q = `?v=${encodeURIComponent(version)}`;
     return [
-        ...LOCAL_BASES.map(base => ({ label: 'local', url: `${normalizeBase(base)}/main.js${q}` })),
         { label: 'testingcf', url: `${CDN_BASE}/main.js${q}` },
         { label: 'raw', url: `${RAW_BASE}/main.js${q}` },
     ];
