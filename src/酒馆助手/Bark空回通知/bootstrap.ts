@@ -1,6 +1,6 @@
 /**
- * 引导：JSON 从 testingcf 拉 index；version 只信 raw GitHub（与 main 同步）；
- * main 先试 testingcf，内容过旧则自动改拉 raw。这样刷新能更新，且不必改 JSON。
+ * 引导：JSON import boot.js；version 只信 raw GitHub；
+ * main 先试 testingcf @main，过旧则 raw。勿再用 index.js（镜像易卡 2.3.0）。
  */
 
 import { CDN_HOST, GIT_BRANCH, REPO, SCRIPT_VERSION } from './constants';

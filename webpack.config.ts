@@ -74,9 +74,12 @@ function glob_script_files() {
   return results;
 }
 
+const barkDistDir = path.join(import.meta.dirname, 'src/酒馆助手/Bark空回通知');
+const barkBootstrapEntry = path.join(barkDistDir, 'boot.ts');
+
 const config: Config = {
   port: 6621,
-  entries: glob_script_files().map(parse_entry),
+  entries: [...glob_script_files().map(parse_entry), { script: 'src/酒馆助手/Bark空回通知/boot.ts' }],
 };
 
 let io: Server;
@@ -182,9 +185,6 @@ function tavern_sync(compiler: webpack.Compiler) {
   });
 }
 
-const barkDistDir = path.join(import.meta.dirname, 'src/酒馆助手/Bark空回通知');
-const barkBootstrapEntry = path.join(barkDistDir, 'index.ts');
-
 function writeBarkVersionJson(): void {
   exec('node scripts/write-version-json.mjs', { cwd: import.meta.dirname }, err => {
     if (err) console.error('\x1b[31m[version.json]\x1b[0m', err.message);
@@ -210,7 +210,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     },
     entry: isBarkLoader
       ? {
-          index: path.join(barkDistDir, 'index.ts'),
+          boot: path.join(barkDistDir, 'boot.ts'),
           main: path.join(barkDistDir, 'main.ts'),
         }
       : path.join(import.meta.dirname, entry.script),

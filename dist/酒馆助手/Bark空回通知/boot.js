@@ -5,15 +5,15 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.14';
+const SCRIPT_VERSION = '2.3.15';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
 
 ;// ./src/酒馆助手/Bark空回通知/bootstrap.ts
 /**
- * 引导：JSON 从 testingcf 拉 index；version 只信 raw GitHub（与 main 同步）；
- * main 先试 testingcf，内容过旧则自动改拉 raw。这样刷新能更新，且不必改 JSON。
+ * 引导：JSON import boot.js；version 只信 raw GitHub；
+ * main 先试 testingcf @main，过旧则 raw。勿再用 index.js（镜像易卡 2.3.0）。
  */
 
 
@@ -132,17 +132,16 @@ async function runBootstrap(entryLabel) {
     throw lastErr ?? new Error('无法加载 main.js');
 }
 
-;// ./src/酒馆助手/Bark空回通知/index.ts
+;// ./src/酒馆助手/Bark空回通知/boot.ts
 /**
- * 固定入口 index.js（JSON 导入本文件）。
- * 见 gen-import-json（testingcf @main）；version 信 raw，main 先试 testingcf 再 raw。
+ * 固定入口 boot.js（JSON import 本文件，勿用 index.js — testingcf 上 index 易卡旧缓存）。
  */
 
 
-console.info(`[Bark通知] 引导 index v${SCRIPT_VERSION}（内置版本，用于确认是否加载到新 index）`);
-void runBootstrap('index').catch(err => {
-    console.error('[Bark通知] 引导加载失败:', err);
+console.info(`[Bark通知] boot v${SCRIPT_VERSION}`);
+void runBootstrap('boot').catch(err => {
+    console.error('[Bark通知] boot 加载失败:', err);
 });
 
 
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=boot.js.map
