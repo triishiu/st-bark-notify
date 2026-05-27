@@ -166,9 +166,45 @@ function analyzeReply(
 
 let generationActive = false;
 let generationActiveClearTimer: ReturnType<typeof setTimeout> | null = null;
+let streamSettleTimer: ReturnType<typeof setTimeout> | null = null;
 const checkTimers = new Map<number | string, ReturnType<typeof setTimeout>>();
 const notifiedIds = new Set<number | string>();
 const notifyInFlight = new Set<number | string>();
+
+/** 流式 token 停止后多久视为「生成结束」（手机常收不到 ENDED） */
+const STREAM_IDLE_MS = 1400;
+
+function traceNotify(msg: string): void {
+  try {
+    if (!loadSettings().notifyTrace) return;
+    toastr.info(msg, 'Bark检测', { timeOut: 4500 });
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearStreamSettleTimer(): void {
+  if (streamSettleTimer) {
+    clearTimeout(streamSettleTimer);
+    streamSettleTimer = null;
+  }
+}
+
+function onStreamToken(): void {
+  if (!generationActive) return;
+  clearStreamSettleTimer();
+  streamSettleTimer = setTimeout(() => {
+    streamSettleTimer = null;
+    if (!generationActive) return;
+    generationActive = false;
+    if (generationActiveClearTimer) {
+      clearTimeout(generationActiveClearTimer);
+      generationActiveClearTimer = null;
+    }
+    traceNotify('流式输出已停止，开始检测');
+    finalizeLastAssistant('stream_idle');
+  }, STREAM_IDLE_MS);
+}
 
 export function isGenerationActive(): boolean {
   return generationActive;
@@ -179,11 +215,21 @@ function notifyKeyFor(message_id: number | string, msg?: { message_id?: number }
   return normalizeMessageId(mid != null ? mid : message_id);
 }
 
-function scheduleLastAssistantCheck(trigger: string): void {
+function runFinalizeChecks(message_id: number | string, trigger: string): void {
+  const id = normalizeMessageId(message_id);
+  traceNotify(`检测: ${trigger}`);
+  for (const ms of [0, 350, 1000, 2200]) {
+    window.setTimeout(() => {
+      void checkAndNotify(id, ms === 0 ? trigger : `${trigger}+${ms}ms`);
+    }, ms);
+  }
+}
+
+function finalizeLastAssistant(trigger: string): void {
   try {
     const last = getChatMessages(-1, { include_swipes: true })[0];
     if (isAssistantMessage(last) && last.message_id != null) {
-      scheduleCheck(last.message_id, trigger);
+      runFinalizeChecks(last.message_id, trigger);
     }
   } catch {
     /* ignore */
@@ -196,13 +242,15 @@ function setGenerationActive(active: boolean): void {
     clearTimeout(generationActiveClearTimer);
     generationActiveClearTimer = null;
   }
+  if (!active) clearStreamSettleTimer();
   if (active) {
     generationActiveClearTimer = setTimeout(() => {
       generationActive = false;
       generationActiveClearTimer = null;
       console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
-      scheduleLastAssistantCheck('generation_timeout');
-    }, 45_000);
+      traceNotify('超时兜底检测');
+      finalizeLastAssistant('generation_timeout');
+    }, 90_000);
   }
 }
 
@@ -222,6 +270,8 @@ export function bindGenerationGate(): void {
     eventOn(tavern_events.GENERATION_STARTED, () => {
       setGenerationActive(true);
       clearPendingChecks();
+      clearStreamSettleTimer();
+      traceNotify('生成开始');
       try {
         const last = getChatMessages(-1)[0];
         resetNotifyStateForMessage(last?.message_id);
@@ -233,18 +283,25 @@ export function bindGenerationGate(): void {
   if (tavern_events.GENERATION_STOPPED) {
     eventOn(tavern_events.GENERATION_STOPPED, () => {
       setGenerationActive(false);
-      scheduleLastAssistantCheck('generation_stopped');
+      clearStreamSettleTimer();
+      traceNotify('GENERATION_STOPPED');
+      finalizeLastAssistant('generation_stopped');
     });
   }
   if (tavern_events.GENERATION_ENDED) {
     eventOn(tavern_events.GENERATION_ENDED, (message_id: number) => {
       setGenerationActive(false);
+      clearStreamSettleTimer();
       clearPendingChecks();
       resetNotifyStateForMessage(message_id);
-      scheduleCheck(message_id, 'generation_ended');
+      traceNotify('GENERATION_ENDED');
+      runFinalizeChecks(message_id, 'generation_ended');
     });
   } else {
-    console.warn('[Bark通知] 无 GENERATION_ENDED 事件，依赖 MESSAGE_UPDATED 兜底');
+    console.warn('[Bark通知] 无 GENERATION_ENDED 事件，依赖流式空闲/MESSAGE_UPDATED 兜底');
+  }
+  for (const ev of [tavern_events.STREAM_TOKEN_RECEIVED, tavern_events.SMOOTH_STREAM_TOKEN_RECEIVED] as const) {
+    if (ev) eventOn(ev, () => onStreamToken());
   }
   if (tavern_events.MESSAGE_UPDATED) {
     eventOn(tavern_events.MESSAGE_UPDATED, (message_id: number) => {
@@ -259,7 +316,9 @@ export function bindGenerationGate(): void {
   if (typeof iframe_events !== 'undefined' && iframe_events.GENERATION_ENDED) {
     eventOn(iframe_events.GENERATION_ENDED, () => {
       setGenerationActive(false);
-      scheduleLastAssistantCheck('js_generation_ended');
+      clearStreamSettleTimer();
+      traceNotify('js_generation_ended');
+      finalizeLastAssistant('js_generation_ended');
     });
   }
 }
@@ -279,6 +338,23 @@ function shouldSkipUserStop(trigger: string): boolean {
   return false;
 }
 
+function isStopControl(el: Element): boolean {
+  const id = (el.id ?? '').toLowerCase();
+  const cls = String(el.className ?? '').toLowerCase();
+  if (id.includes('mes_stop') || id.includes('stop_gen')) return true;
+  if (cls.includes('mes_stop') || cls.includes('stop_generation') || cls.includes('inline_stopping')) {
+    return true;
+  }
+  const aria = (el.getAttribute('aria-label') ?? '').toLowerCase();
+  if (/停止|中止/.test(aria) || aria === 'stop') return true;
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'button' || el.getAttribute('role') === 'button') {
+    const t = (el.textContent ?? '').trim();
+    if (/^(停止|中止|stop)$/i.test(t)) return true;
+  }
+  return false;
+}
+
 export function bindStopDetector(): void {
   (['touchstart', 'pointerdown', 'mousedown', 'click'] as const).forEach(type => {
     document.addEventListener(
@@ -287,8 +363,7 @@ export function bindStopDetector(): void {
         const path = e.composedPath?.() ?? [];
         for (const el of path) {
           if (!(el instanceof Element)) continue;
-          const info = `${el.id} ${el.className} ${el.textContent ?? ''}`.toLowerCase();
-          if (info.includes('stop') || info.includes('停止') || info.includes('中止')) {
+          if (isStopControl(el)) {
             markUserStopped(type);
             break;
           }
@@ -365,12 +440,17 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
         ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
         ` truncGt=${truncGt} minTokens=${s.minTokens}`,
     );
-    if (!analysis.shouldNotify) return;
+    if (!analysis.shouldNotify) {
+      traceNotify(`${trigger}: 不通知 (${analysis.reason || '正常'})`);
+      return;
+    }
 
     notifiedIds.add(key);
     notifyInFlight.add(key);
     try {
+      traceNotify(`${trigger}: 推送中 (${analysis.reason})`);
       await sendBark(s.emptyMsg, s);
+      traceNotify(`已推送: ${analysis.reason}`);
     } finally {
       notifyInFlight.delete(key);
     }
@@ -385,6 +465,7 @@ function isSettledTrigger(trigger: string): boolean {
     trigger.includes('generation_stopped') ||
     trigger.includes('js_generation_ended') ||
     trigger.includes('generation_timeout') ||
+    trigger.includes('stream_idle') ||
     trigger.includes('char_rendered') ||
     trigger.includes('updated_settled')
   );
@@ -396,6 +477,7 @@ function isFinalizeTrigger(trigger: string): boolean {
     trigger.includes('generation_stopped') ||
     trigger.includes('js_generation_ended') ||
     trigger.includes('generation_timeout') ||
+    trigger.includes('stream_idle') ||
     trigger.includes('char_rendered')
   );
 }
@@ -407,20 +489,20 @@ export function scheduleCheck(message_id: number | string, trigger: string): voi
   const settled = isSettledTrigger(trigger);
   const finalize = isFinalizeTrigger(trigger);
 
-  if (finalize && checkTimers.has(id)) {
-    clearTimeout(checkTimers.get(id)!);
-    checkTimers.delete(id);
+  if (finalize) {
+    if (checkTimers.has(id)) {
+      clearTimeout(checkTimers.get(id)!);
+      checkTimers.delete(id);
+    }
+    runFinalizeChecks(message_id, trigger);
+    return;
   }
 
-  // 流式 MESSAGE_UPDATED 不重置定时器；生成结束类事件必须能再调度一次
-  if (settled && !finalize && checkTimers.has(id)) return;
+  // 流式 MESSAGE_UPDATED 不重置定时器
+  if (settled && checkTimers.has(id)) return;
 
   if (checkTimers.has(id)) clearTimeout(checkTimers.get(id)!);
-  const delay = finalize
-    ? 350
-    : trigger.includes('updated_settled')
-      ? 600
-      : 500;
+  const delay = trigger.includes('updated_settled') ? 500 : 400;
   checkTimers.set(
     id,
     setTimeout(() => {

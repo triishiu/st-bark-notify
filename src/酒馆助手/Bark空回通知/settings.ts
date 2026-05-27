@@ -11,6 +11,8 @@ export interface Settings {
   minTokens: number;
   level: 'passive' | 'active' | 'timeSensitive';
   sound: string;
+  /** 手机无控制台时，用 toastr 显示检测过程 */
+  notifyTrace: boolean;
 }
 
 export const defaultSettings: Settings = {
@@ -23,6 +25,7 @@ export const defaultSettings: Settings = {
   minTokens: 500,
   level: 'timeSensitive',
   sound: 'default',
+  notifyTrace: false,
 };
 
 /** 保存后立即可用，避免 replaceVariables 与 getVariables 不同步导致检测仍用旧开关 */
@@ -65,6 +68,7 @@ export function normalizeSettings(partial: Partial<Settings>): Settings {
         ? partial.level
         : defaultSettings.level,
     sound: String(partial.sound ?? defaultSettings.sound),
+    notifyTrace: parseBoolish(partial.notifyTrace, defaultSettings.notifyTrace),
   };
 }
 
@@ -122,5 +126,6 @@ export function readForm($root: JQuery<HTMLElement>): Settings {
     minTokens: Math.max(1, parseInt(get('bn-min-tokens'), 10) || defaultSettings.minTokens),
     level: (get('bn-level') as Settings['level']) || s.level,
     sound: s.sound,
+    notifyTrace: $root.find('#bn-notify-trace').is(':checked'),
   });
 }

@@ -1,4 +1,4 @@
-import { PANEL_ID, STYLE_ID } from './constants';
+import { PANEL_ID, SCRIPT_VERSION, STYLE_ID } from './constants';
 import { sendBark } from './send-bark';
 import { loadSettings, parseBarkKey, readForm, saveSettings } from './settings';
 
@@ -102,7 +102,7 @@ function bindUiEvents($root: JQuery<HTMLElement>): void {
     if (key) $(this).val(key);
   });
 
-  $root.on('change', '#bn-enabled, #bn-trunc-no-gt, #bn-level, #bn-min-tokens', () => {
+  $root.on('change', '#bn-enabled, #bn-trunc-no-gt, #bn-notify-trace, #bn-level, #bn-min-tokens', () => {
     const form = readForm($root);
     saveSettings(form);
     setStatus(`设置已保存（>截断: ${form.truncatedIfNoGreaterThanEnd ? '开' : '关'}）`, 'ok');
@@ -135,7 +135,7 @@ export function mountUI(): void {
   const html = `
 <div id="${PANEL_ID}" script_id="${scriptId}" class="inline-drawer">
   <div class="inline-drawer-toggle inline-drawer-header">
-    <b>Bark 空回/截断通知</b>
+    <b>Bark 空回/截断通知 v${SCRIPT_VERSION}</b>
     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
   </div>
   <div class="inline-drawer-content">
@@ -150,6 +150,12 @@ export function mountUI(): void {
         <label class="checkbox_label bn-field bn-field--full">
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
+        </label>
+      </div>
+      <div class="bn-row">
+        <label class="checkbox_label bn-field bn-field--full">
+          <input id="bn-notify-trace" type="checkbox" ${s.notifyTrace ? 'checked' : ''}>
+          <span>检测提示（手机调试，无控制台时用）</span>
         </label>
       </div>
       <div class="bn-row">
