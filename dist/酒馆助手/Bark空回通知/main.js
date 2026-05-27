@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** jsDelivr 官方 CDN */
 const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.24';
+const SCRIPT_VERSION = '2.3.25';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -170,7 +170,6 @@ async function sendBark(message, override) {
 }
 
 ;// ./src/酒馆助手/Bark空回通知/detection.ts
-
 
 
 function getMessageBody(msg) {
@@ -390,7 +389,6 @@ function finalizeLastAssistant(trigger) {
     }
 }
 function setGenerationActive(active) {
-    console.log(`[Bark通知] setGenerationActive(${active})`);
     generationActive = active;
     if (generationActiveClearTimer) {
         clearTimeout(generationActiveClearTimer);
@@ -401,13 +399,13 @@ function setGenerationActive(active) {
     if (active) {
         generationActiveClearTimer = setTimeout(() => {
             if (!generationActive)
-                return; // 已被其他触发器处理
+                return;
             generationActive = false;
             generationActiveClearTimer = null;
             console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
             traceNotify('超时兜底检测');
             finalizeLastAssistant('generation_timeout');
-        }, 60_000); // 改回 60 秒
+        }, 60_000);
     }
 }
 function clearPendingChecks() {
@@ -424,7 +422,6 @@ function resetNotifyStateForMessage(message_id) {
 function bindGenerationGate() {
     if (tavern_events.GENERATION_STARTED) {
         eventOn(tavern_events.GENERATION_STARTED, () => {
-            console.log('[Bark通知] GENERATION_STARTED 事件触发');
             setGenerationActive(true);
             clearPendingChecks();
             clearStreamSettleTimer();
@@ -448,11 +445,8 @@ function bindGenerationGate() {
     }
     if (tavern_events.GENERATION_ENDED) {
         eventOn(tavern_events.GENERATION_ENDED, (message_id) => {
-            if (!generationActive) {
-                console.log(`[Bark通知] 跳过 generation_ended (generationActive=false)`);
+            if (!generationActive)
                 return;
-            }
-            console.log(`[Bark通知 v${SCRIPT_VERSION}] generation_ended message_id=${message_id}`);
             setGenerationActive(false);
             clearStreamSettleTimer();
             clearPendingChecks();
