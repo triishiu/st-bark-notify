@@ -11,7 +11,8 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 const repo = 'triishiu/st-bark-notify';
-const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}/dist/酒馆助手/Bark空回通知/index.js`;
+/** 必须带 @main，否则 jsdelivr 可能落到错误分支/旧缓存（约 27KB 旧 index） */
+const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}@main/dist/酒馆助手/Bark空回通知/index.js`;
 
 const script = {
   type: 'script',

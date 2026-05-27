@@ -8,7 +8,7 @@ const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const DIST_BASE_CANDIDATES = [
     'http://localhost:5500/dist/酒馆助手/Bark空回通知',
     'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-    `https://testingcf.jsdelivr.net/gh/${REPO}/${DIST_REL}`,
+    `https://testingcf.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`,
 ];
 function normalizeBase(base) {
     return base.replace(/\/?$/, '');
