@@ -3,7 +3,7 @@
   "enabled": true,
   "name": "Bark空回通知",
   "id": "87fdc68e-d00e-482a-890a-569b99fb3da1",
-  "content": "import('https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify@89ee5a8/dist/酒馆助手/Bark空回通知/boot.js');",
+  "content": "import('https://cdn.jsdelivr.net/gh/triishiu/st-bark-notify@8ec50d4/dist/酒馆助手/Bark空回通知/boot.js');",
   "info": "作者：@雨衣\n1. iOS 下载 Bark，复制 Key\n2. 扩展填 Key，点测试看能否收到\n3. 发版后刷新即可（入口 boot.js @main）",
   "button": {
     "enabled": true,

@@ -219,10 +219,8 @@ function notifyKeyFor(message_id: number | string, msg?: { message_id?: number }
 function runFinalizeChecks(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
   traceNotify(`检测: ${trigger}`);
-  // 只保留 1000ms 延迟检测
-  window.setTimeout(() => {
-    void checkAndNotify(id, `${trigger}+1000ms`);
-  }, 1000);
+  // 立即检测，不延迟
+  void checkAndNotify(id, trigger);
 }
 
 function finalizeLastAssistant(trigger: string): void {
@@ -310,11 +308,12 @@ export function bindGenerationGate(): void {
       scheduleCheck(message_id, 'updated_settled');
     });
   }
-  if (tavern_events.CHARACTER_MESSAGE_RENDERED) {
-    eventOn(tavern_events.CHARACTER_MESSAGE_RENDERED, (message_id: number) => {
-      scheduleCheck(message_id, 'char_rendered');
-    });
-  }
+  // 禁用 CHARACTER_MESSAGE_RENDERED，避免与 GENERATION_ENDED 重复
+  // if (tavern_events.CHARACTER_MESSAGE_RENDERED) {
+  //   eventOn(tavern_events.CHARACTER_MESSAGE_RENDERED, (message_id: number) => {
+  //     scheduleCheck(message_id, 'char_rendered');
+  //   });
+  // }
   if (typeof iframe_events !== 'undefined' && iframe_events.GENERATION_ENDED) {
     eventOn(iframe_events.GENERATION_ENDED, () => {
       setGenerationActive(false);
@@ -434,9 +433,9 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     const stTokens = readStoredTokenCount(msg);
     const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
 
-    // 输出检测结果
+    // 输出检测结果（不显示 trigger 名称）
     console.log(
-      `[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens} stTokens=${analysis.stTokens} visible=${extractReplyText(body).length} raw=${body.length} notify=${analysis.shouldNotify} reason=${analysis.reason} truncGt=${truncGt} minTokens=${s.minTokens}`
+      `[Bark通知 v${SCRIPT_VERSION}] tokens=${analysis.tokens} stTokens=${analysis.stTokens} visible=${extractReplyText(body).length} raw=${body.length} notify=${analysis.shouldNotify} reason=${analysis.reason} truncGt=${truncGt} minTokens=${s.minTokens}`
     );
 
     if (!analysis.shouldNotify) {
