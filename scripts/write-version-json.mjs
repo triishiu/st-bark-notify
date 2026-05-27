@@ -1,5 +1,5 @@
 /**
- * 写入 dist/酒馆助手/Bark空回通知/version.json，供 index.js 引导加载 main.js 时破缓存。
+ * 写入 dist/酒馆助手/Bark空回通知/version.json，供 boot.js 引导加载 main.js 时破缓存。
  */
 import fs from 'node:fs';
 import path from 'node:path';

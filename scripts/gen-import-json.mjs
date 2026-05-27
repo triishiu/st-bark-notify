@@ -1,7 +1,7 @@
 /**
  * 生成酒馆助手脚本导入 JSON（根目录 Bark空回通知.json）
  *
- * CDN 与 StageDog 资源一致：testingcf + index.js（引导）→ main.js?v=版本（见 version.json）
+ * CDN 与 StageDog 一致：testingcf 干净路径 boot.js → version.json + main.js?v=版本
  *
  * 用法：npm run gen:import
  */
@@ -11,8 +11,7 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 const repo = 'triishiu/st-bark-notify';
-/** 必须带 @main，否则 jsdelivr 可能落到错误分支/旧缓存（约 27KB 旧 index） */
-const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}@main/dist/酒馆助手/Bark空回通知/index.js`;
+const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}/dist/酒馆助手/Bark空回通知/boot.js`;
 
 const script = {
   type: 'script',
