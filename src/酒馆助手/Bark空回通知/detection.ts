@@ -236,6 +236,7 @@ function finalizeLastAssistant(trigger: string): void {
 }
 
 function setGenerationActive(active: boolean): void {
+  console.log(`[Bark通知] setGenerationActive(${active})`);
   generationActive = active;
   if (generationActiveClearTimer) {
     clearTimeout(generationActiveClearTimer);
@@ -250,7 +251,7 @@ function setGenerationActive(active: boolean): void {
       console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
       traceNotify('超时兜底检测');
       finalizeLastAssistant('generation_timeout');
-    }, 10_000); // 改为 10 秒
+    }, 60_000); // 改回 60 秒
   }
 }
 
@@ -268,6 +269,7 @@ function resetNotifyStateForMessage(message_id: number | string | undefined): vo
 export function bindGenerationGate(): void {
   if (tavern_events.GENERATION_STARTED) {
     eventOn(tavern_events.GENERATION_STARTED, () => {
+      console.log('[Bark通知] GENERATION_STARTED 事件触发');
       setGenerationActive(true);
       clearPendingChecks();
       clearStreamSettleTimer();

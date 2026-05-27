@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** jsDelivr 官方 CDN */
 const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.22';
+const SCRIPT_VERSION = '2.3.23';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -390,6 +390,7 @@ function finalizeLastAssistant(trigger) {
     }
 }
 function setGenerationActive(active) {
+    console.log(`[Bark通知] setGenerationActive(${active})`);
     generationActive = active;
     if (generationActiveClearTimer) {
         clearTimeout(generationActiveClearTimer);
@@ -406,7 +407,7 @@ function setGenerationActive(active) {
             console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
             traceNotify('超时兜底检测');
             finalizeLastAssistant('generation_timeout');
-        }, 10_000); // 改为 10 秒
+        }, 60_000); // 改回 60 秒
     }
 }
 function clearPendingChecks() {
@@ -423,6 +424,7 @@ function resetNotifyStateForMessage(message_id) {
 function bindGenerationGate() {
     if (tavern_events.GENERATION_STARTED) {
         eventOn(tavern_events.GENERATION_STARTED, () => {
+            console.log('[Bark通知] GENERATION_STARTED 事件触发');
             setGenerationActive(true);
             clearPendingChecks();
             clearStreamSettleTimer();
