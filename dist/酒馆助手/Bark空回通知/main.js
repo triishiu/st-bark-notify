@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** jsDelivr 官方 CDN */
 const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.29';
+const SCRIPT_VERSION = '2.3.30';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -418,6 +418,8 @@ function bindGenerationGate() {
             try {
                 const last = getChatMessages(-1)[0];
                 resetNotifyStateForMessage(last?.message_id);
+                // 清理旧的手动停止标记，避免集合无限增长
+                userStoppedMessages.clear();
             }
             catch {
                 /* ignore */
@@ -472,14 +474,24 @@ function bindGenerationGate() {
         });
     }
 }
-let userStopIgnoreUntil = 0;
+const userStoppedMessages = new Set();
 function markUserStopped(reason) {
-    userStopIgnoreUntil = Date.now() + 20_000;
-    console.log('[Bark通知] 用户手动停止，20秒内跳过检测:', reason);
+    try {
+        const last = getChatMessages(-1, { include_swipes: true })[0];
+        if (last?.message_id != null) {
+            const id = normalizeMessageId(last.message_id);
+            userStoppedMessages.add(id);
+            console.log('[Bark通知] 用户手动停止，跳过本条消息检测:', reason, 'message_id:', id);
+        }
+    }
+    catch {
+        /* ignore */
+    }
 }
-function shouldSkipUserStop(trigger) {
-    if (Date.now() <= userStopIgnoreUntil) {
-        console.log('[Bark通知] 跳过（用户刚停止）:', trigger);
+function shouldSkipUserStop(message_id) {
+    const id = normalizeMessageId(message_id);
+    if (userStoppedMessages.has(id)) {
+        console.log('[Bark通知] 跳过（用户手动停止的消息）:', id);
         return true;
     }
     return false;
@@ -555,7 +567,7 @@ async function readAssistantBody(message_id, trigger) {
 async function checkAndNotify(message_id, trigger) {
     const s = loadSettings();
     const id = normalizeMessageId(message_id);
-    if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim())
+    if (shouldSkipUserStop(id) || !s.enabled || !s.barkKey.trim())
         return;
     const settled = isSettledTrigger(trigger);
     if (generationActive && !settled) {

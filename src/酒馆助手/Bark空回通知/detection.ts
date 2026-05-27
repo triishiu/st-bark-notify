@@ -265,6 +265,8 @@ export function bindGenerationGate(): void {
       try {
         const last = getChatMessages(-1)[0];
         resetNotifyStateForMessage(last?.message_id);
+        // 清理旧的手动停止标记，避免集合无限增长
+        userStoppedMessages.clear();
       } catch {
         /* ignore */
       }
@@ -316,16 +318,25 @@ export function bindGenerationGate(): void {
   }
 }
 
-let userStopIgnoreUntil = 0;
+const userStoppedMessages = new Set<number | string>();
 
 function markUserStopped(reason: string): void {
-  userStopIgnoreUntil = Date.now() + 20_000;
-  console.log('[Bark通知] 用户手动停止，20秒内跳过检测:', reason);
+  try {
+    const last = getChatMessages(-1, { include_swipes: true })[0];
+    if (last?.message_id != null) {
+      const id = normalizeMessageId(last.message_id);
+      userStoppedMessages.add(id);
+      console.log('[Bark通知] 用户手动停止，跳过本条消息检测:', reason, 'message_id:', id);
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
-function shouldSkipUserStop(trigger: string): boolean {
-  if (Date.now() <= userStopIgnoreUntil) {
-    console.log('[Bark通知] 跳过（用户刚停止）:', trigger);
+function shouldSkipUserStop(message_id: number | string): boolean {
+  const id = normalizeMessageId(message_id);
+  if (userStoppedMessages.has(id)) {
+    console.log('[Bark通知] 跳过（用户手动停止的消息）:', id);
     return true;
   }
   return false;
@@ -404,7 +415,7 @@ async function readAssistantBody(
 async function checkAndNotify(message_id: number | string, trigger: string): Promise<void> {
   const s = loadSettings();
   const id = normalizeMessageId(message_id);
-  if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim()) return;
+  if (shouldSkipUserStop(id) || !s.enabled || !s.barkKey.trim()) return;
   const settled = isSettledTrigger(trigger);
   if (generationActive && !settled) {
     scheduleCheck(id, 'wait_gen');
