@@ -241,16 +241,7 @@ function setGenerationActive(active: boolean): void {
     generationActiveClearTimer = null;
   }
   if (!active) clearStreamSettleTimer();
-  if (active) {
-    generationActiveClearTimer = setTimeout(() => {
-      if (!generationActive) return;
-      generationActive = false;
-      generationActiveClearTimer = null;
-      console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
-      traceNotify('超时兜底检测');
-      finalizeLastAssistant('generation_timeout');
-    }, 60_000);
-  }
+  // 删除兜底逻辑，只依赖 generation_ended 事件
 }
 
 function clearPendingChecks(): void {
@@ -283,8 +274,9 @@ export function bindGenerationGate(): void {
     eventOn(tavern_events.GENERATION_STOPPED, () => {
       setGenerationActive(false);
       clearStreamSettleTimer();
+      markUserStopped('GENERATION_STOPPED'); // 标记为用户手动停止
       traceNotify('GENERATION_STOPPED');
-      finalizeLastAssistant('generation_stopped');
+      // 不触发检测，因为是用户手动停止
     });
   }
   if (tavern_events.GENERATION_ENDED) {
