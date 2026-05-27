@@ -1,5 +1,5 @@
 /**
- * 生成 Bark空回通知.json — import cdn.jsdelivr @main/boot.js（不用 index.js）
+ * 生成 Bark空回通知.json — import statically.io (无 @ 符号，缓存更快)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const repo = 'triishiu/st-bark-notify';
 const branch = 'main';
 const distPath = 'dist/酒馆助手/Bark空回通知';
-const bootUrl = `https://cdn.jsdelivr.net/gh/${repo}@${branch}/${distPath}/boot.js`;
+const bootUrl = `https://cdn.statically.io/gh/${repo}/${branch}/${distPath}/boot.js`;
 
 const script = {
   type: 'script',
