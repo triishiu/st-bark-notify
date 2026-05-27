@@ -398,6 +398,8 @@ function setGenerationActive(active) {
         clearStreamSettleTimer();
     if (active) {
         generationActiveClearTimer = setTimeout(() => {
+            if (!generationActive)
+                return; // 已被其他触发器处理
             generationActive = false;
             generationActiveClearTimer = null;
             console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
