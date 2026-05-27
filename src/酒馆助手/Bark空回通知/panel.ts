@@ -135,7 +135,7 @@ export function mountUI(): void {
   const html = `
 <div id="${PANEL_ID}" script_id="${scriptId}" class="inline-drawer">
   <div class="inline-drawer-toggle inline-drawer-header">
-    <b>Bark 空回/截断通知 v${SCRIPT_VERSION}</b>
+    <b>Bark 空回/截断通知</b>
     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
   </div>
   <div class="inline-drawer-content">
@@ -150,12 +150,6 @@ export function mountUI(): void {
         <label class="checkbox_label bn-field bn-field--full">
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
-        </label>
-      </div>
-      <div class="bn-row">
-        <label class="checkbox_label bn-field bn-field--full">
-          <input id="bn-notify-trace" type="checkbox" ${s.notifyTrace ? 'checked' : ''}>
-          <span>检测提示（手机调试，无控制台时用）</span>
         </label>
       </div>
       <div class="bn-row">

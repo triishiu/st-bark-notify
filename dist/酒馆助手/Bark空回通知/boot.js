@@ -5,7 +5,7 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.16';
+const SCRIPT_VERSION = '2.3.17';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';

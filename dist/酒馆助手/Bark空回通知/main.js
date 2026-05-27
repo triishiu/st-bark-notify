@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.16';
+const SCRIPT_VERSION = '2.3.17';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -785,7 +785,7 @@ function mountUI() {
     const html = `
 <div id="${PANEL_ID}" script_id="${scriptId}" class="inline-drawer">
   <div class="inline-drawer-toggle inline-drawer-header">
-    <b>Bark 空回/截断通知 v${SCRIPT_VERSION}</b>
+    <b>Bark 空回/截断通知</b>
     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
   </div>
   <div class="inline-drawer-content">
@@ -800,12 +800,6 @@ function mountUI() {
         <label class="checkbox_label bn-field bn-field--full">
           <input id="bn-trunc-no-gt" type="checkbox" ${s.truncatedIfNoGreaterThanEnd !== false ? 'checked' : ''}>
           <span>未以 &gt; 结尾时视为截断</span>
-        </label>
-      </div>
-      <div class="bn-row">
-        <label class="checkbox_label bn-field bn-field--full">
-          <input id="bn-notify-trace" type="checkbox" ${s.notifyTrace ? 'checked' : ''}>
-          <span>检测提示（手机调试，无控制台时用）</span>
         </label>
       </div>
       <div class="bn-row">
