@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.19';
+const SCRIPT_VERSION = '2.3.20';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -170,7 +170,6 @@ async function sendBark(message, override) {
 }
 
 ;// ./src/酒馆助手/Bark空回通知/detection.ts
-
 
 
 function getMessageBody(msg) {
@@ -373,11 +372,10 @@ function notifyKeyFor(message_id, msg) {
 function runFinalizeChecks(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     traceNotify(`检测: ${trigger}`);
-    for (const ms of [0, 350, 1000, 2200]) {
-        window.setTimeout(() => {
-            void checkAndNotify(id, ms === 0 ? trigger : `${trigger}+${ms}ms`);
-        }, ms);
-    }
+    // 只保留 1000ms 延迟检测
+    window.setTimeout(() => {
+        void checkAndNotify(id, `${trigger}+1000ms`);
+    }, 1000);
 }
 function finalizeLastAssistant(trigger) {
     try {
@@ -578,18 +576,11 @@ async function checkAndNotify(message_id, trigger) {
         const { msg, body } = read;
         const key = notifyKeyFor(id, msg);
         if (notifiedIds.has(key) || notifyInFlight.has(key)) {
-            console.info(`[Bark通知] 跳过重复通知 key=${key} trigger=${trigger}`);
             return;
         }
         const truncGt = s.truncatedIfNoGreaterThanEnd;
         const stTokens = readStoredTokenCount(msg);
         const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
-        const visibleLen = extractReplyText(body).length;
-        console.info(`[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens}` +
-            (analysis.stTokens != null ? ` stTokens=${analysis.stTokens}` : '') +
-            ` visible=${visibleLen} raw=${body.length}` +
-            ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
-            ` truncGt=${truncGt} minTokens=${s.minTokens}`);
         if (!analysis.shouldNotify) {
             traceNotify(`${trigger}: 不通知 (${analysis.reason || '正常'})`);
             return;

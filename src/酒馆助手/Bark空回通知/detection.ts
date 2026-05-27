@@ -218,11 +218,10 @@ function notifyKeyFor(message_id: number | string, msg?: { message_id?: number }
 function runFinalizeChecks(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
   traceNotify(`检测: ${trigger}`);
-  for (const ms of [0, 350, 1000, 2200]) {
-    window.setTimeout(() => {
-      void checkAndNotify(id, ms === 0 ? trigger : `${trigger}+${ms}ms`);
-    }, ms);
-  }
+  // 只保留 1000ms 延迟检测
+  window.setTimeout(() => {
+    void checkAndNotify(id, `${trigger}+1000ms`);
+  }, 1000);
 }
 
 function finalizeLastAssistant(trigger: string): void {
@@ -425,21 +424,12 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     const { msg, body } = read;
     const key = notifyKeyFor(id, msg);
     if (notifiedIds.has(key) || notifyInFlight.has(key)) {
-      console.info(`[Bark通知] 跳过重复通知 key=${key} trigger=${trigger}`);
       return;
     }
 
     const truncGt = s.truncatedIfNoGreaterThanEnd;
     const stTokens = readStoredTokenCount(msg);
     const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
-    const visibleLen = extractReplyText(body).length;
-    console.info(
-      `[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens}` +
-        (analysis.stTokens != null ? ` stTokens=${analysis.stTokens}` : '') +
-        ` visible=${visibleLen} raw=${body.length}` +
-        ` notify=${analysis.shouldNotify} reason=${analysis.reason || '-'}` +
-        ` truncGt=${truncGt} minTokens=${s.minTokens}`,
-    );
     if (!analysis.shouldNotify) {
       traceNotify(`${trigger}: 不通知 (${analysis.reason || '正常'})`);
       return;
