@@ -1,6 +1,6 @@
 /**
  * 固定入口 index.js（JSON 导入本文件）。
- * 见 gen-import-json（cdn.jsdelivr.net @main）；内部用 bootstrap 拉 version + main。
+ * 见 gen-import-json（固定 @main）；bootstrap 优先 raw GitHub 拉 main，刷新即更新。
  */
 import { runBootstrap } from './bootstrap';
 import { SCRIPT_VERSION } from './constants';

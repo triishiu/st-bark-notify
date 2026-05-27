@@ -2,10 +2,10 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 const REPO = 'triishiu/st-bark-notify';
+/** 与 GitHub / 导入 JSON 的 @main 一致 */
+const GIT_BRANCH = 'main';
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.10';
-/** 与本次 build 的 git 提交一致；postbuild 写入。勿指望 @main 刷新即更新。 */
-const CDN_GIT_REF = '71cca44';
+const SCRIPT_VERSION = '2.3.11';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -689,7 +689,6 @@ function injectStyle() {
 #${PANEL_ID} #bn-status.is-wait { border-color: rgba(52,152,219,0.5); color: #85c1e9; background: rgba(52,152,219,0.12); }
 #${PANEL_ID} .menu_button.bn-test { background: #e94560 !important; border-color: #e94560 !important; color: #fff !important; }
 #${PANEL_ID} .menu_button.disabled { opacity: 0.55; pointer-events: none; }
-#${PANEL_ID} .bn-update-test { display: block; margin-top: 6px; font-size: 1em; color: #6ee7a0; }
 `.trim();
     $('<style>').attr('id', STYLE_ID).text(css).appendTo('head');
 }
@@ -844,7 +843,6 @@ function mountUI() {
         <div id="bn-save" class="menu_button">保存设置</div>
         <div id="bn-test" class="menu_button bn-test">测试推送</div>
       </div>
-      <div class="bn-update-test">你好</div>
       <div id="bn-status"></div>
     </div>
   </div>

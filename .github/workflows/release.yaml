@@ -21,9 +21,9 @@ jobs:
         run: |
           set -e
           NOTES=$(cat <<'EOF'
-          下载 **Bark空回通知.json** 导入酒馆助手（CDN 钉在 git 提交 SHA，非 `@main`）。
+          下载 **Bark空回通知.json** 导入酒馆助手（固定 `@main`，发版后刷新酒馆即可）。
 
-          发版 push 后请**重新导入**本 JSON；仅刷新页面无法绕过 jsDelivr 对 `@main` 约 7 天的缓存。
+          若长期未更新，可强刷页面；CI 会在每次 bundle 后自动 purge jsDelivr 缓存。
           EOF
           )
 

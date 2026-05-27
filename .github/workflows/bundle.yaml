@@ -52,23 +52,9 @@ jobs:
           default_author: github_actions
           message: '[bot] bundle'
 
-      # 将 CDN_GIT_REF / 导入 JSON 钉到本次 bundle 提交（避免 dist 在 bot 提交而 JSON 仍指向上一个 SHA）
-      - name: Pin CDN ref and rebuild
+      - name: Purge jsDelivr @main (刷新即可更新，无需改 JSON)
         if: github.repository != 'StageDog/tavern_helper_template'
-        run: |
-          node scripts/write-version-json.mjs
-          pnpm build
-          pnpm run gen:import
-      - name: Commit CDN pin
-        if: github.repository != 'StageDog/tavern_helper_template'
-        uses: EndBug/add-and-commit@v9.1.3
-        with:
-          default_author: github_actions
-          message: '[bot] pin CDN ref in import JSON'
-          add: |
-            Bark空回通知.json
-            dist/酒馆助手/Bark空回通知/
-            src/酒馆助手/Bark空回通知/constants.ts
+        run: node scripts/purge-jsdelivr.mjs
 
       # 自动打版本 tag, 从而让 jsdelivr 基于版本号在 12h 内更新缓存而不是用非版本号的 7d 缓存
       - id: autotag
