@@ -432,6 +432,12 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
     const truncGt = s.truncatedIfNoGreaterThanEnd;
     const stTokens = readStoredTokenCount(msg);
     const analysis = analyzeReply(body, s.minTokens, truncGt, stTokens);
+
+    // 输出检测结果
+    console.log(
+      `[Bark通知 v${SCRIPT_VERSION}] ${trigger} tokens=${analysis.tokens} stTokens=${analysis.stTokens} visible=${extractReplyText(body).length} raw=${body.length} notify=${analysis.shouldNotify} reason=${analysis.reason} truncGt=${truncGt} minTokens=${s.minTokens}`
+    );
+
     if (!analysis.shouldNotify) {
       traceNotify(`${trigger}: 不通知 (${analysis.reason || '正常'})`);
       return;
