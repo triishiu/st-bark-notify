@@ -292,6 +292,10 @@ export function bindGenerationGate(): void {
   }
   if (tavern_events.GENERATION_ENDED) {
     eventOn(tavern_events.GENERATION_ENDED, (message_id: number) => {
+      if (!generationActive) {
+        console.log(`[Bark通知] 跳过 generation_ended (generationActive=false)`);
+        return;
+      }
       console.log(`[Bark通知 v${SCRIPT_VERSION}] generation_ended message_id=${message_id}`);
       setGenerationActive(false);
       clearStreamSettleTimer();
