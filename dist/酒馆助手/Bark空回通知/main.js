@@ -2,7 +2,7 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.1';
+const SCRIPT_VERSION = '2.3.2';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -436,7 +436,7 @@ async function readAssistantBody(message_id, trigger) {
         const body = getMessageBody(msg);
         if (body.length > 0 || i === attempts - 1)
             return { msg, body };
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise(r => setTimeout(r, 300));
     }
     return null;
 }
@@ -479,13 +479,17 @@ async function checkAndNotify(message_id, trigger) {
 }
 function scheduleCheck(message_id, trigger) {
     const id = normalizeMessageId(message_id);
+    const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
+    // 流式输出会连续 MESSAGE_UPDATED；若每次重置 3s 定时器，通知会被推到生成结束后很久（体感 ~10s）
+    if (settled && checkTimers.has(id))
+        return;
     if (checkTimers.has(id))
         clearTimeout(checkTimers.get(id));
     const delay = trigger.includes('generation_ended')
-        ? 1200
+        ? 800
         : trigger.includes('updated_settled')
-            ? 3000
-            : 1000;
+            ? 1200
+            : 800;
     checkTimers.set(id, setTimeout(() => {
         checkTimers.delete(id);
         void checkAndNotify(id, trigger);

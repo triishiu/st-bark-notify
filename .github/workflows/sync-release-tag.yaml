@@ -1,0 +1,24 @@
+# Bark空回通知.json 变更后挪动 tag，触发 release.yaml 重发 Release 附件
+name: sync-release-tag
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Bark空回通知.json'
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move tag Bark空回通知 to HEAD
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "Bark空回通知"
+          git push origin "Bark空回通知" --force

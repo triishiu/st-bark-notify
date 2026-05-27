@@ -294,7 +294,7 @@ async function readAssistantBody(
     if (!msg) return null;
     const body = getMessageBody(msg);
     if (body.length > 0 || i === attempts - 1) return { msg, body };
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 300));
   }
   return null;
 }
@@ -336,12 +336,17 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
 
 export function scheduleCheck(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
+  const settled =
+    trigger.includes('generation_ended') || trigger.includes('updated_settled');
+  // 流式输出会连续 MESSAGE_UPDATED；若每次重置 3s 定时器，通知会被推到生成结束后很久（体感 ~10s）
+  if (settled && checkTimers.has(id)) return;
+
   if (checkTimers.has(id)) clearTimeout(checkTimers.get(id)!);
   const delay = trigger.includes('generation_ended')
-    ? 1200
+    ? 800
     : trigger.includes('updated_settled')
-      ? 3000
-      : 1000;
+      ? 1200
+      : 800;
   checkTimers.set(
     id,
     setTimeout(() => {
