@@ -153,6 +153,7 @@ export function mountUI(): void {
           <span>未以 &gt; 结尾时视为截断</span>
         </label>
       </div>
+      <p class="bn-hint">你好</p>
       <div class="bn-row">
         <div class="bn-field">
           <label class="bn-label" for="bn-level">通知级别</label>
