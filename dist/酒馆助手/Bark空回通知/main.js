@@ -3,8 +3,8 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 const REPO = 'triishiu/st-bark-notify';
 const GIT_BRANCH = 'main';
-/** statically.io CDN，缓存更新更快 */
-const CDN_HOST = 'cdn.statically.io';
+/** jsDelivr 官方 CDN */
+const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
 const SCRIPT_VERSION = '2.3.20';
 const PANEL_ID = 'bark-notify-ext-settings';

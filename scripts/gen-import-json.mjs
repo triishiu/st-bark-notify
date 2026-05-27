@@ -1,14 +1,15 @@
 /**
- * 生成 Bark空回通知.json — import statically.io (无 @ 符号，缓存更快)
+ * 生成 Bark空回通知.json — 使用 HEAD 提交 hash，完全绕过缓存
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
 const repo = 'triishiu/st-bark-notify';
-const branch = 'main';
+const commitHash = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim().slice(0, 7);
 const distPath = 'dist/酒馆助手/Bark空回通知';
-const bootUrl = `https://cdn.statically.io/gh/${repo}/${branch}/${distPath}/boot.js`;
+const bootUrl = `https://cdn.jsdelivr.net/gh/${repo}@${commitHash}/${distPath}/boot.js`;
 
 const script = {
   type: 'script',

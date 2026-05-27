@@ -9,7 +9,7 @@ export { REPO };
 export const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
-const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
+const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
 
 function semverOlder(a: string, b: string): boolean {
   const pa = a.split('.').map(n => Number(n) || 0);

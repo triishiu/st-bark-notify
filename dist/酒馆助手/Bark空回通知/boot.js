@@ -2,8 +2,8 @@
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 const REPO = 'triishiu/st-bark-notify';
 const GIT_BRANCH = 'main';
-/** statically.io CDN，缓存更新更快 */
-const CDN_HOST = 'cdn.statically.io';
+/** jsDelivr 官方 CDN */
+const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
 const SCRIPT_VERSION = '2.3.20';
 const PANEL_ID = 'bark-notify-ext-settings';
@@ -19,7 +19,7 @@ const IFRAME_NAME = 'bark-notify-iframe';
 
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
-const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
+const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
 function semverOlder(a, b) {
     const pa = a.split('.').map(n => Number(n) || 0);
     const pb = b.split('.').map(n => Number(n) || 0);
