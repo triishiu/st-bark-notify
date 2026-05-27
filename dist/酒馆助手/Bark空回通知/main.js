@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** jsDelivr 官方 CDN */
 const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.26';
+const SCRIPT_VERSION = '2.3.27';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -350,18 +350,18 @@ function onStreamToken() {
     if (!generationActive)
         return;
     clearStreamSettleTimer();
-    streamSettleTimer = setTimeout(() => {
-        streamSettleTimer = null;
-        if (!generationActive)
-            return;
-        generationActive = false;
-        if (generationActiveClearTimer) {
-            clearTimeout(generationActiveClearTimer);
-            generationActiveClearTimer = null;
-        }
-        traceNotify('流式输出已停止，开始检测');
-        finalizeLastAssistant('stream_idle');
-    }, STREAM_IDLE_MS);
+    // 禁用流式空闲检测，避免生成进行中误触发
+    // streamSettleTimer = setTimeout(() => {
+    //   streamSettleTimer = null;
+    //   if (!generationActive) return;
+    //   generationActive = false;
+    //   if (generationActiveClearTimer) {
+    //     clearTimeout(generationActiveClearTimer);
+    //     generationActiveClearTimer = null;
+    //   }
+    //   traceNotify('流式输出已停止，开始检测');
+    //   finalizeLastAssistant('stream_idle');
+    // }, STREAM_IDLE_MS);
 }
 function isGenerationActive() {
     return generationActive;

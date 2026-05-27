@@ -193,17 +193,18 @@ function clearStreamSettleTimer(): void {
 function onStreamToken(): void {
   if (!generationActive) return;
   clearStreamSettleTimer();
-  streamSettleTimer = setTimeout(() => {
-    streamSettleTimer = null;
-    if (!generationActive) return;
-    generationActive = false;
-    if (generationActiveClearTimer) {
-      clearTimeout(generationActiveClearTimer);
-      generationActiveClearTimer = null;
-    }
-    traceNotify('流式输出已停止，开始检测');
-    finalizeLastAssistant('stream_idle');
-  }, STREAM_IDLE_MS);
+  // 禁用流式空闲检测，避免生成进行中误触发
+  // streamSettleTimer = setTimeout(() => {
+  //   streamSettleTimer = null;
+  //   if (!generationActive) return;
+  //   generationActive = false;
+  //   if (generationActiveClearTimer) {
+  //     clearTimeout(generationActiveClearTimer);
+  //     generationActiveClearTimer = null;
+  //   }
+  //   traceNotify('流式输出已停止，开始检测');
+  //   finalizeLastAssistant('stream_idle');
+  // }, STREAM_IDLE_MS);
 }
 
 export function isGenerationActive(): boolean {
