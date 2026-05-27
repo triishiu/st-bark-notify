@@ -3,8 +3,8 @@
   "enabled": true,
   "name": "Bark空回通知",
   "id": "87fdc68e-d00e-482a-890a-569b99fb3da1",
-  "content": "(async()=>{try{const u='https://raw.githubusercontent.com/triishiu/st-bark-notify/main/dist/酒馆助手/Bark空回通知/main.js?t='+Date.now();const r=await fetch(u,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const s=await r.text();const b=new Blob([s],{type:'text/javascript'});const o=URL.createObjectURL(b);try{await import(o)}finally{URL.revokeObjectURL(o)}}catch(e){console.error('[Bark通知] 加载失败:',e)}})();",
-  "info": "作者：@雨衣\n1. iOS 下载 Bark，复制 Key\n2. 扩展填 Key，点测试看能否收到\n3. 发版后刷新即可（内联引导，直接 raw）",
+  "content": "import('https://testingcf.jsdelivr.net/gh/triishiu/st-bark-notify@main/dist/酒馆助手/Bark空回通知/boot.js');",
+  "info": "作者：@雨衣\n1. iOS 下载 Bark，复制 Key\n2. 扩展填 Key，点测试看能否收到\n3. 发版后刷新即可（入口 boot.js @main）",
   "button": {
     "enabled": true,
     "buttons": []
