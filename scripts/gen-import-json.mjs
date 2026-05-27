@@ -1,7 +1,7 @@
 /**
  * 生成酒馆助手脚本导入 JSON（根目录 Bark空回通知.json）
  *
- * CDN 与 StageDog 资源一致：testingcf + 默认分支最新 dist，无 @main、无 ?v=
+ * CDN 与 StageDog 资源一致：testingcf + index.js（引导）→ main.js?v=版本（见 version.json）
  *
  * 用法：npm run gen:import
  */

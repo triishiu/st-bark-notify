@@ -182,11 +182,21 @@ function tavern_sync(compiler: webpack.Compiler) {
   });
 }
 
+const barkDistDir = path.join(import.meta.dirname, 'src/酒馆助手/Bark空回通知');
+const barkBootstrapEntry = path.join(barkDistDir, 'index.ts');
+
+function writeBarkVersionJson(): void {
+  exec('node scripts/write-version-json.mjs', { cwd: import.meta.dirname }, err => {
+    if (err) console.error('\x1b[31m[version.json]\x1b[0m', err.message);
+  });
+}
+
 function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Configuration {
-  const should_obfuscate = fs
-    .readFileSync(path.join(import.meta.dirname, entry.script), 'utf-8')
-    .includes('@obfuscate');
   const scriptPath = entry.script.replace(/\\/g, '/');
+  const isBarkLoader =
+    path.normalize(path.join(import.meta.dirname, entry.script)) === path.normalize(barkBootstrapEntry);
+  const obfuscateSource = isBarkLoader ? path.join(barkDistDir, 'main.ts') : path.join(import.meta.dirname, entry.script);
+  const should_obfuscate = fs.readFileSync(obfuscateSource, 'utf-8').includes('@obfuscate');
   const keep_readable_dist = scriptPath.includes('src/酒馆助手/');
   const script_filepath = path.parse(entry.script);
 
@@ -198,7 +208,12 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     watchOptions: {
       ignored: ['**/dist', '**/node_modules'],
     },
-    entry: path.join(import.meta.dirname, entry.script),
+    entry: isBarkLoader
+      ? {
+          index: path.join(barkDistDir, 'index.ts'),
+          main: path.join(barkDistDir, 'main.ts'),
+        }
+      : path.join(import.meta.dirname, entry.script),
     target: 'browserslist',
     output: {
       devtoolNamespace: 'tavern_helper_template',
@@ -212,13 +227,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
         return `${is_direct === true ? 'src' : 'webpack'}://${info.namespace}/${resource_path}${is_direct || is_vue_script ? '' : '?' + info.hash}`;
       },
-      filename: `${script_filepath.name}.js`,
+      filename: isBarkLoader ? '[name].js' : `${script_filepath.name}.js`,
       path: path.join(
         import.meta.dirname,
         'dist',
         path.relative(import.meta.dirname, script_filepath.dir).replace(/^[^\\/]+[\\/]/, ''),
       ),
-      chunkFilename: `${script_filepath.name}.[contenthash].chunk.js`,
+      chunkFilename: isBarkLoader ? '[name].[contenthash].chunk.js' : `${script_filepath.name}.[contenthash].chunk.js`,
       asyncChunks: true,
       clean: true,
       publicPath: '',
@@ -481,6 +496,17 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                 splitStrings: true,
                 seed: 1,
               }),
+            ]
+          : [],
+      )
+      .concat(
+        isBarkLoader
+          ? [
+              {
+                apply(compiler: webpack.Compiler) {
+                  compiler.hooks.done.tap('barkVersionJson', () => writeBarkVersionJson());
+                },
+              },
             ]
           : [],
       ),
