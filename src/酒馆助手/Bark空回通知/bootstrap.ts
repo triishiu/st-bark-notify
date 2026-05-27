@@ -47,9 +47,6 @@ export function normalizeBase(base: string): string {
 
 function resolveVersion(fetched: string, source: string): string {
   const v = semverOlder(fetched, SCRIPT_VERSION) ? SCRIPT_VERSION : fetched;
-  if (v !== fetched) {
-    console.warn(`[Bark通知] 远端版本 ${fetched} 过旧 (${source})，改用 ${v}`);
-  }
   return v;
 }
 
@@ -78,7 +75,6 @@ export async function readVersion(): Promise<string> {
       /* try next */
     }
   }
-  console.warn(`[Bark通知] version.json 不可用，使用内置 ${SCRIPT_VERSION}`);
   return SCRIPT_VERSION;
 }
 
@@ -107,19 +103,15 @@ export async function runBootstrap(entryLabel: string): Promise<void> {
   let lastErr: unknown;
   for (const { label, url: mainUrl } of mainUrlCandidates(version)) {
     try {
-      console.info(`[Bark通知] ${entryLabel} → [${label}] ${mainUrl}`);
       const res = await fetch(mainUrl, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
       const source = await res.text();
-      const bodyVer = parseMainScriptVersion(source);
       await importMainFromSource(mainUrl, source, version);
-      console.info(`[Bark通知] main 已加载 v${bodyVer ?? '?'} ← [${label}]`);
       return;
     } catch (err) {
       lastErr = err;
-      console.warn(`[Bark通知] main 失败 [${label}]:`, err);
     }
   }
   throw lastErr ?? new Error('无法加载 main.js');

@@ -5,27 +5,21 @@
  *
  * 一旦 testingcf 上这一份新 index.js 被刷新，之后每次刷新都走 raw 拿最新 main。
  */
-import { GIT_BRANCH, REPO, SCRIPT_VERSION } from './constants';
+import { GIT_BRANCH, REPO } from './constants';
 
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
 
-console.info(`[Bark通知] index 兼容引导 v${SCRIPT_VERSION}（强制 raw）`);
-
 void (async () => {
   try {
     const url = `${RAW_BASE}/main.js?t=${Date.now()}`;
-    console.info(`[Bark通知] index → [raw] ${url}`);
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const source = await res.text();
-    const m = source.match(/SCRIPT_VERSION\s*=\s*['"]([^'"]+)['"]/);
-    const bodyVer = m?.[1] ?? '?';
     const blob = new Blob([source], { type: 'text/javascript' });
     const blobUrl = URL.createObjectURL(blob);
     try {
       await import(/* webpackIgnore: true */ blobUrl);
-      console.info(`[Bark通知] main 已加载 v${bodyVer} ← [raw]`);
     } finally {
       URL.revokeObjectURL(blobUrl);
     }

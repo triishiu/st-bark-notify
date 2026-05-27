@@ -5,7 +5,7 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.17';
+const SCRIPT_VERSION = '2.3.18';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -21,22 +21,17 @@ const IFRAME_NAME = 'bark-notify-iframe';
 
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
-console.info(`[Bark通知] index 兼容引导 v${SCRIPT_VERSION}（强制 raw）`);
 void (async () => {
     try {
         const url = `${RAW_BASE}/main.js?t=${Date.now()}`;
-        console.info(`[Bark通知] index → [raw] ${url}`);
         const res = await fetch(url, { cache: 'no-store' });
         if (!res.ok)
             throw new Error(`HTTP ${res.status}`);
         const source = await res.text();
-        const m = source.match(/SCRIPT_VERSION\s*=\s*['"]([^'"]+)['"]/);
-        const bodyVer = m?.[1] ?? '?';
         const blob = new Blob([source], { type: 'text/javascript' });
         const blobUrl = URL.createObjectURL(blob);
         try {
             await import(/* webpackIgnore: true */ blobUrl);
-            console.info(`[Bark通知] main 已加载 v${bodyVer} ← [raw]`);
         }
         finally {
             URL.revokeObjectURL(blobUrl);

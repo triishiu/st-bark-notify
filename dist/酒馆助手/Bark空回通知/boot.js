@@ -5,7 +5,7 @@ const GIT_BRANCH = 'main';
 /** 国内导入用 testingcf（jsDelivr 镜像）；须带 @main */
 const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.17';
+const SCRIPT_VERSION = '2.3.18';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -53,9 +53,6 @@ function normalizeBase(base) {
 }
 function resolveVersion(fetched, source) {
     const v = semverOlder(fetched, SCRIPT_VERSION) ? SCRIPT_VERSION : fetched;
-    if (v !== fetched) {
-        console.warn(`[Bark通知] 远端版本 ${fetched} 过旧 (${source})，改用 ${v}`);
-    }
     return v;
 }
 /** 不用 testingcf 的 version.json（常卡在旧版）；只信 raw GitHub */
@@ -86,7 +83,6 @@ async function readVersion() {
             /* try next */
         }
     }
-    console.warn(`[Bark通知] version.json 不可用，使用内置 ${SCRIPT_VERSION}`);
     return SCRIPT_VERSION;
 }
 async function importMainFromSource(mainUrl, source, expectedVersion) {
@@ -113,20 +109,16 @@ async function runBootstrap(entryLabel) {
     let lastErr;
     for (const { label, url: mainUrl } of mainUrlCandidates(version)) {
         try {
-            console.info(`[Bark通知] ${entryLabel} → [${label}] ${mainUrl}`);
             const res = await fetch(mainUrl, { cache: 'no-store' });
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
             }
             const source = await res.text();
-            const bodyVer = parseMainScriptVersion(source);
             await importMainFromSource(mainUrl, source, version);
-            console.info(`[Bark通知] main 已加载 v${bodyVer ?? '?'} ← [${label}]`);
             return;
         }
         catch (err) {
             lastErr = err;
-            console.warn(`[Bark通知] main 失败 [${label}]:`, err);
         }
     }
     throw lastErr ?? new Error('无法加载 main.js');
@@ -137,8 +129,6 @@ async function runBootstrap(entryLabel) {
  * 固定入口 boot.js（JSON import 本文件，勿用 index.js — testingcf 上 index 易卡旧缓存）。
  */
 
-
-console.info(`[Bark通知] boot v${SCRIPT_VERSION}`);
 void runBootstrap('boot').catch(err => {
     console.error('[Bark通知] boot 加载失败:', err);
 });
