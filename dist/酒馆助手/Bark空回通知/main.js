@@ -6,7 +6,7 @@ const GIT_BRANCH = 'main';
 /** jsDelivr 官方 CDN */
 const CDN_HOST = 'cdn.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.21';
+const SCRIPT_VERSION = '2.3.22';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -170,6 +170,7 @@ async function sendBark(message, override) {
 }
 
 ;// ./src/酒馆助手/Bark空回通知/detection.ts
+
 
 
 function getMessageBody(msg) {
@@ -445,6 +446,7 @@ function bindGenerationGate() {
     }
     if (tavern_events.GENERATION_ENDED) {
         eventOn(tavern_events.GENERATION_ENDED, (message_id) => {
+            console.log(`[Bark通知 v${SCRIPT_VERSION}] generation_ended message_id=${message_id}`);
             setGenerationActive(false);
             clearStreamSettleTimer();
             clearPendingChecks();
