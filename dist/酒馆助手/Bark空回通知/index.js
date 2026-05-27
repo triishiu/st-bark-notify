@@ -1,33 +1,34 @@
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.6';
+const SCRIPT_VERSION = '2.3.7';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
 
 ;// ./src/酒馆助手/Bark空回通知/bootstrap.ts
 /**
- * 引导：index.js 建议用 @main（见 gen-import-json）。
- * testingcf 无 @main 的 version.json / index 常为旧缓存（如 2.3.0），只从 @main / raw 读版本。
+ * 引导：JSON 导入须用 cdn.jsdelivr.net@main（见 gen-import-json）。
+ * testingcf 镜像常长期卡在旧版（如 2.3.0），仅作末位备选。
  */
 
 const REPO = 'triishiu/st-bark-notify';
 const DIST_REL = 'dist/酒馆助手/Bark空回通知';
-const PINNED_DIST = `https://testingcf.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
-/** 读 version.json（必须 @main，勿用无 @ 路径） */
+const CDN_MAIN = `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
+const CDN_TESTINGCF = `https://testingcf.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
+/** 读 version.json（必须 @main；优先官方 CDN） */
 const VERSION_BASES = [
     'http://localhost:5500/dist/酒馆助手/Bark空回通知',
     'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-    PINNED_DIST,
-    `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`,
+    CDN_MAIN,
+    CDN_TESTINGCF,
 ];
-/** 加载 main.js（仅 @main） */
+/** 加载 main.js（仅 @main；官方 CDN 优先） */
 const MAIN_BASES = [
     'http://localhost:5500/dist/酒馆助手/Bark空回通知',
     'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-    PINNED_DIST,
-    `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`,
+    CDN_MAIN,
+    CDN_TESTINGCF,
 ];
 function semverOlder(a, b) {
     const pa = a.split('.').map(n => Number(n) || 0);
@@ -104,9 +105,11 @@ async function runBootstrap(entryLabel) {
 ;// ./src/酒馆助手/Bark空回通知/index.ts
 /**
  * 固定入口 index.js（JSON 导入本文件）。
- * 见 gen-import-json（@main）；内部用 bootstrap 拉 version + main。
+ * 见 gen-import-json（cdn.jsdelivr.net @main）；内部用 bootstrap 拉 version + main。
  */
 
+
+console.info(`[Bark通知] 引导 index v${SCRIPT_VERSION}（内置版本，用于确认是否加载到新 index）`);
 void runBootstrap('index').catch(err => {
     console.error('[Bark通知] 引导加载失败:', err);
 });

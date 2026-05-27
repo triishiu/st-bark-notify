@@ -1,7 +1,7 @@
 /**
  * 生成酒馆助手脚本导入 JSON（根目录 Bark空回通知.json）
  *
- * CDN：testingcf + @main + index.js（引导）→ main.js?v=版本（见 version.json）
+ * CDN：cdn.jsdelivr.net + @main + index.js（引导）→ main.js?v=版本（testingcf 镜像易过期，勿作默认）
  * 发版后用户只需刷新页面，不必改 JSON。
  *
  * 用法：npm run gen:import
@@ -13,7 +13,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const importFileName = 'Bark空回通知.json';
 const repo = 'triishiu/st-bark-notify';
 const distPath = 'dist/酒馆助手/Bark空回通知';
-const cdnUrl = `https://testingcf.jsdelivr.net/gh/${repo}@main/${distPath}/index.js`;
+const cdnUrl = `https://cdn.jsdelivr.net/gh/${repo}@main/${distPath}/index.js`;
 
 const script = {
   type: 'script',

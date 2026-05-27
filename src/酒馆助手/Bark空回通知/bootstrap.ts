@@ -1,6 +1,6 @@
 /**
- * 引导：index.js 建议用 @main（见 gen-import-json）。
- * testingcf 无 @main 的 version.json / index 常为旧缓存（如 2.3.0），只从 @main / raw 读版本。
+ * 引导：JSON 导入须用 cdn.jsdelivr.net@main（见 gen-import-json）。
+ * testingcf 镜像常长期卡在旧版（如 2.3.0），仅作末位备选。
  */
 
 import { SCRIPT_VERSION } from './constants';
@@ -8,22 +8,23 @@ import { SCRIPT_VERSION } from './constants';
 export const REPO = 'triishiu/st-bark-notify';
 export const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 
-const PINNED_DIST = `https://testingcf.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
+const CDN_MAIN = `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
+const CDN_TESTINGCF = `https://testingcf.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
 
-/** 读 version.json（必须 @main，勿用无 @ 路径） */
+/** 读 version.json（必须 @main；优先官方 CDN） */
 export const VERSION_BASES = [
   'http://localhost:5500/dist/酒馆助手/Bark空回通知',
   'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-  PINNED_DIST,
-  `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`,
+  CDN_MAIN,
+  CDN_TESTINGCF,
 ];
 
-/** 加载 main.js（仅 @main） */
+/** 加载 main.js（仅 @main；官方 CDN 优先） */
 export const MAIN_BASES = [
   'http://localhost:5500/dist/酒馆助手/Bark空回通知',
   'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
-  PINNED_DIST,
-  `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`,
+  CDN_MAIN,
+  CDN_TESTINGCF,
 ];
 
 function semverOlder(a: string, b: string): boolean {
