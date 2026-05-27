@@ -1,6 +1,6 @@
 /**
  * 固定入口 index.js（JSON 导入本文件）。
- * 见 gen-import-json（raw GitHub，无 CDN）；bootstrap 仅从 raw / 本机 5500 拉 main。
+ * 见 gen-import-json（testingcf @main）；version 信 raw，main 先试 testingcf 再 raw。
  */
 import { runBootstrap } from './bootstrap';
 import { SCRIPT_VERSION } from './constants';

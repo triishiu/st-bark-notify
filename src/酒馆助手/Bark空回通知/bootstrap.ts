@@ -1,13 +1,15 @@
 /**
- * 引导：不用任何 CDN，仅从 raw GitHub（与 main 同步）或本机 5500 开发服务加载。
+ * 引导：JSON 从 testingcf 拉 index；version 只信 raw GitHub（与 main 同步）；
+ * main 先试 testingcf，内容过旧则自动改拉 raw。这样刷新能更新，且不必改 JSON。
  */
 
-import { GIT_BRANCH, REPO, SCRIPT_VERSION } from './constants';
+import { CDN_HOST, GIT_BRANCH, REPO, SCRIPT_VERSION } from './constants';
 
 export { REPO };
 export const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/${GIT_BRANCH}/${DIST_REL}`;
+const CDN_BASE = `https://${CDN_HOST}/gh/${REPO}@${GIT_BRANCH}/${DIST_REL}`;
 
 const LOCAL_BASES = [
   'http://localhost:5500/dist/酒馆助手/Bark空回通知',
@@ -35,7 +37,7 @@ function assertMainContentVersion(source: string, expected: string, mainUrl: str
     throw new Error(`main.js 未含 SCRIPT_VERSION: ${mainUrl}`);
   }
   if (semverOlder(got, expected)) {
-    throw new Error(`main.js 内容 v${got} < 期望 v${expected}（${mainUrl}）`);
+    throw new Error(`testingcf 体 v${got} < 期望 v${expected}（镜像缓存过期）`);
   }
 }
 
@@ -51,6 +53,7 @@ function resolveVersion(fetched: string, source: string): string {
   return v;
 }
 
+/** 不用 testingcf 的 version.json（常卡在旧版）；只信 raw GitHub */
 export async function readVersion(): Promise<string> {
   try {
     const res = await fetch(`${RAW_BASE}/version.json`, { cache: 'no-store' });
@@ -94,6 +97,7 @@ function mainUrlCandidates(version: string): { label: string; url: string }[] {
   const q = `?v=${encodeURIComponent(version)}`;
   return [
     ...LOCAL_BASES.map(base => ({ label: 'local', url: `${normalizeBase(base)}/main.js${q}` })),
+    { label: 'testingcf', url: `${CDN_BASE}/main.js${q}` },
     { label: 'raw', url: `${RAW_BASE}/main.js${q}` },
   ];
 }

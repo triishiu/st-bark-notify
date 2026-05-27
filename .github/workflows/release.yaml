@@ -21,7 +21,7 @@ jobs:
         run: |
           set -e
           NOTES=$(cat <<'EOF'
-          下载 **Bark空回通知.json** 导入酒馆助手（GitHub raw，无 CDN；发版后刷新即可）。
+          下载 **Bark空回通知.json** 导入酒馆助手（testingcf @main；发版后刷新即可）。
           EOF
           )
 
