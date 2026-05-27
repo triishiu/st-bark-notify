@@ -18,6 +18,7 @@ eventOn(getButtonEvent('Bark通知设置'), () => focusExtensionsSettings());
 
 $(() => {
   mountUI();
+  (globalThis as { __BARK_NOTIFY_VERSION?: string }).__BARK_NOTIFY_VERSION = SCRIPT_VERSION;
   console.info(`[Bark通知] 脚本 v${SCRIPT_VERSION} 已加载（仅在生成结束后检测）`);
 });
 

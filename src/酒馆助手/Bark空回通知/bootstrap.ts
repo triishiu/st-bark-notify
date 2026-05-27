@@ -1,6 +1,6 @@
 /**
  * 引导：JSON 导入须用 cdn.jsdelivr.net@main（见 gen-import-json）。
- * testingcf 镜像常长期卡在旧版（如 2.3.0），仅作末位备选。
+ * testingcf 的 main.js 常「URL 带新版本、文件体仍是旧版」，禁止用于加载 main。
  */
 
 import { SCRIPT_VERSION } from './constants';
@@ -9,22 +9,22 @@ export const REPO = 'triishiu/st-bark-notify';
 export const DIST_REL = 'dist/酒馆助手/Bark空回通知';
 
 const CDN_MAIN = `https://cdn.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
-const CDN_TESTINGCF = `https://testingcf.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
+const CDN_GCORE = `https://gcore.jsdelivr.net/gh/${REPO}@main/${DIST_REL}`;
 
 /** 读 version.json（必须 @main；优先官方 CDN） */
 export const VERSION_BASES = [
   'http://localhost:5500/dist/酒馆助手/Bark空回通知',
   'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
   CDN_MAIN,
-  CDN_TESTINGCF,
+  CDN_GCORE,
 ];
 
-/** 加载 main.js（仅 @main；官方 CDN 优先） */
+/** 加载 main.js（校验文件内 SCRIPT_VERSION，不用 testingcf） */
 export const MAIN_BASES = [
   'http://localhost:5500/dist/酒馆助手/Bark空回通知',
   'http://127.0.0.1:5500/dist/酒馆助手/Bark空回通知',
   CDN_MAIN,
-  CDN_TESTINGCF,
+  CDN_GCORE,
 ];
 
 function semverOlder(a: string, b: string): boolean {
@@ -35,6 +35,22 @@ function semverOlder(a: string, b: string): boolean {
     if ((pa[i] ?? 0) > (pb[i] ?? 0)) return false;
   }
   return false;
+}
+
+function parseMainScriptVersion(source: string): string | null {
+  const m = source.match(/SCRIPT_VERSION\s*=\s*['"]([^'"]+)['"]/);
+  return m?.[1] ?? null;
+}
+
+/** 拒绝「?v=2.3.8 但文件里仍是 2.3.0」的 CDN 脏缓存 */
+function assertMainContentVersion(source: string, expected: string, mainUrl: string): void {
+  const got = parseMainScriptVersion(source);
+  if (!got) {
+    throw new Error(`main.js 未含 SCRIPT_VERSION: ${mainUrl}`);
+  }
+  if (semverOlder(got, expected)) {
+    throw new Error(`main.js 内容 v${got} < 期望 v${expected}（${mainUrl}，CDN 体与 ?v= 不一致）`);
+  }
 }
 
 export function normalizeBase(base: string): string {
@@ -80,6 +96,17 @@ function resolveVersion(fetched: string, source: string): string {
   return v;
 }
 
+async function importMainFromSource(mainUrl: string, source: string, expectedVersion: string): Promise<void> {
+  assertMainContentVersion(source, expectedVersion, mainUrl);
+  const blob = new Blob([source], { type: 'text/javascript' });
+  const blobUrl = URL.createObjectURL(blob);
+  try {
+    await import(/* webpackIgnore: true */ blobUrl);
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
+}
+
 export async function runBootstrap(entryLabel: string): Promise<void> {
   const version = await readVersion();
   let lastErr: unknown;
@@ -87,7 +114,14 @@ export async function runBootstrap(entryLabel: string): Promise<void> {
     const mainUrl = `${normalizeBase(base)}/main.js?v=${encodeURIComponent(version)}`;
     try {
       console.info(`[Bark通知] ${entryLabel} → ${mainUrl}`);
-      await import(/* webpackIgnore: true */ mainUrl);
+      const res = await fetch(mainUrl, { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const source = await res.text();
+      const bodyVer = parseMainScriptVersion(source);
+      await importMainFromSource(mainUrl, source, version);
+      console.info(`[Bark通知] main 已加载 v${bodyVer ?? '?'} ← ${mainUrl}`);
       return;
     } catch (err) {
       lastErr = err;
