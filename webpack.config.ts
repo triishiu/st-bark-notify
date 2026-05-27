@@ -55,6 +55,7 @@ function glob_script_files() {
     .filter(
       file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
     )
+    .filter(file => !file.replace(/\\/g, '/').startsWith('src/酒馆助手/Bark空回通知/'))
     .forEach(file => {
       const file_dirname = path.dirname(file);
       for (const [index, result] of results.entries()) {
@@ -211,6 +212,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     entry: isBarkLoader
       ? {
           boot: path.join(barkDistDir, 'boot.ts'),
+          index: path.join(barkDistDir, 'index.ts'),
           main: path.join(barkDistDir, 'main.ts'),
         }
       : path.join(import.meta.dirname, entry.script),

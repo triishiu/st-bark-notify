@@ -2,6 +2,7 @@
 const repo = process.env.PURGE_REPO ?? 'triishiu/st-bark-notify';
 const files = [
   'dist/酒馆助手/Bark空回通知/boot.js',
+  'dist/酒馆助手/Bark空回通知/index.js',
   'dist/酒馆助手/Bark空回通知/main.js',
   'dist/酒馆助手/Bark空回通知/version.json',
 ];
