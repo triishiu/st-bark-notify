@@ -179,6 +179,17 @@ function notifyKeyFor(message_id: number | string, msg?: { message_id?: number }
   return normalizeMessageId(mid != null ? mid : message_id);
 }
 
+function scheduleLastAssistantCheck(trigger: string): void {
+  try {
+    const last = getChatMessages(-1, { include_swipes: true })[0];
+    if (isAssistantMessage(last) && last.message_id != null) {
+      scheduleCheck(last.message_id, trigger);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 function setGenerationActive(active: boolean): void {
   generationActive = active;
   if (generationActiveClearTimer) {
@@ -189,8 +200,9 @@ function setGenerationActive(active: boolean): void {
     generationActiveClearTimer = setTimeout(() => {
       generationActive = false;
       generationActiveClearTimer = null;
-      console.warn('[Bark通知] 未收到 GENERATION_ENDED，已自动结束「生成中」状态');
-    }, 180_000);
+      console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
+      scheduleLastAssistantCheck('generation_timeout');
+    }, 45_000);
   }
 }
 
@@ -221,6 +233,7 @@ export function bindGenerationGate(): void {
   if (tavern_events.GENERATION_STOPPED) {
     eventOn(tavern_events.GENERATION_STOPPED, () => {
       setGenerationActive(false);
+      scheduleLastAssistantCheck('generation_stopped');
     });
   }
   if (tavern_events.GENERATION_ENDED) {
@@ -236,6 +249,17 @@ export function bindGenerationGate(): void {
   if (tavern_events.MESSAGE_UPDATED) {
     eventOn(tavern_events.MESSAGE_UPDATED, (message_id: number) => {
       scheduleCheck(message_id, 'updated_settled');
+    });
+  }
+  if (tavern_events.CHARACTER_MESSAGE_RENDERED) {
+    eventOn(tavern_events.CHARACTER_MESSAGE_RENDERED, (message_id: number) => {
+      scheduleCheck(message_id, 'char_rendered');
+    });
+  }
+  if (typeof iframe_events !== 'undefined' && iframe_events.GENERATION_ENDED) {
+    eventOn(iframe_events.GENERATION_ENDED, () => {
+      setGenerationActive(false);
+      scheduleLastAssistantCheck('js_generation_ended');
     });
   }
 }
@@ -276,7 +300,7 @@ export function bindStopDetector(): void {
   document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape') markUserStopped('escape');
   }, true);
-  (['GENERATION_STOPPED', 'GENERATION_INTERRUPTED', 'GENERATION_ABORTED'] as const).forEach(name => {
+  (['GENERATION_INTERRUPTED', 'GENERATION_ABORTED'] as const).forEach(name => {
     if (tavern_events[name]) eventOn(tavern_events[name], () => markUserStopped(name));
   });
 }
@@ -297,15 +321,14 @@ async function readAssistantBody(
   message_id: number | string,
   trigger: string,
 ): Promise<{ msg: ReturnType<typeof getChatMessages>[0]; body: string } | null> {
-  const settled =
-    trigger.includes('generation_ended') || trigger.includes('updated_settled');
-  const attempts = settled ? 3 : 1;
+  const settled = isSettledTrigger(trigger);
+  const attempts = settled ? 5 : 1;
   for (let i = 0; i < attempts; i++) {
     const msg = fetchAssistantMessage(message_id);
     if (!msg) return null;
     const body = getMessageBody(msg);
     if (body.length > 0 || i === attempts - 1) return { msg, body };
-    if (settled) await new Promise(r => setTimeout(r, 200));
+    if (settled) await new Promise(r => setTimeout(r, 150));
   }
   return null;
 }
@@ -314,8 +337,7 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
   const s = loadSettings();
   const id = normalizeMessageId(message_id);
   if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim()) return;
-  const settled =
-    trigger.includes('generation_ended') || trigger.includes('updated_settled');
+  const settled = isSettledTrigger(trigger);
   if (generationActive && !settled) {
     scheduleCheck(id, 'wait_gen');
     return;
@@ -357,29 +379,48 @@ async function checkAndNotify(message_id: number | string, trigger: string): Pro
   }
 }
 
+function isSettledTrigger(trigger: string): boolean {
+  return (
+    trigger.includes('generation_ended') ||
+    trigger.includes('generation_stopped') ||
+    trigger.includes('js_generation_ended') ||
+    trigger.includes('generation_timeout') ||
+    trigger.includes('char_rendered') ||
+    trigger.includes('updated_settled')
+  );
+}
+
+function isFinalizeTrigger(trigger: string): boolean {
+  return (
+    trigger.includes('generation_ended') ||
+    trigger.includes('generation_stopped') ||
+    trigger.includes('js_generation_ended') ||
+    trigger.includes('generation_timeout') ||
+    trigger.includes('char_rendered')
+  );
+}
+
 export function scheduleCheck(message_id: number | string, trigger: string): void {
   const id = normalizeMessageId(message_id);
   if (/^received:(swipe|append)$/i.test(trigger)) return;
 
-  const settled =
-    trigger.includes('generation_ended') || trigger.includes('updated_settled');
+  const settled = isSettledTrigger(trigger);
+  const finalize = isFinalizeTrigger(trigger);
 
-  if (trigger.includes('generation_ended')) {
-    if (checkTimers.has(id)) {
-      clearTimeout(checkTimers.get(id)!);
-      checkTimers.delete(id);
-    }
+  if (finalize && checkTimers.has(id)) {
+    clearTimeout(checkTimers.get(id)!);
+    checkTimers.delete(id);
   }
 
-  // 流式 MESSAGE_UPDATED 不重置定时器，避免拖到十几秒
-  if (settled && checkTimers.has(id)) return;
+  // 流式 MESSAGE_UPDATED 不重置定时器；生成结束类事件必须能再调度一次
+  if (settled && !finalize && checkTimers.has(id)) return;
 
   if (checkTimers.has(id)) clearTimeout(checkTimers.get(id)!);
-  const delay = trigger.includes('generation_ended')
-    ? 500
+  const delay = finalize
+    ? 350
     : trigger.includes('updated_settled')
-      ? 800
-      : 600;
+      ? 600
+      : 500;
   checkTimers.set(
     id,
     setTimeout(() => {

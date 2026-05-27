@@ -2,7 +2,7 @@ import { klona as __WEBPACK_EXTERNAL_MODULE_https_testingcf_jsdelivr_net_npm_klo
 
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 /** 控制台可见，用于确认 CDN 是否加载到最新脚本 */
-const SCRIPT_VERSION = '2.3.3';
+const SCRIPT_VERSION = '2.3.4';
 const PANEL_ID = 'bark-notify-ext-settings';
 const STYLE_ID = 'bark-notify-ext-style';
 const IFRAME_NAME = 'bark-notify-iframe';
@@ -327,6 +327,17 @@ function notifyKeyFor(message_id, msg) {
     const mid = msg?.message_id;
     return normalizeMessageId(mid != null ? mid : message_id);
 }
+function scheduleLastAssistantCheck(trigger) {
+    try {
+        const last = getChatMessages(-1, { include_swipes: true })[0];
+        if (isAssistantMessage(last) && last.message_id != null) {
+            scheduleCheck(last.message_id, trigger);
+        }
+    }
+    catch {
+        /* ignore */
+    }
+}
 function setGenerationActive(active) {
     generationActive = active;
     if (generationActiveClearTimer) {
@@ -337,8 +348,9 @@ function setGenerationActive(active) {
         generationActiveClearTimer = setTimeout(() => {
             generationActive = false;
             generationActiveClearTimer = null;
-            console.warn('[Bark通知] 未收到 GENERATION_ENDED，已自动结束「生成中」状态');
-        }, 180_000);
+            console.warn('[Bark通知] 长时间未收到生成结束事件，兜底检测最后一楼');
+            scheduleLastAssistantCheck('generation_timeout');
+        }, 45_000);
     }
 }
 function clearPendingChecks() {
@@ -369,6 +381,7 @@ function bindGenerationGate() {
     if (tavern_events.GENERATION_STOPPED) {
         eventOn(tavern_events.GENERATION_STOPPED, () => {
             setGenerationActive(false);
+            scheduleLastAssistantCheck('generation_stopped');
         });
     }
     if (tavern_events.GENERATION_ENDED) {
@@ -385,6 +398,17 @@ function bindGenerationGate() {
     if (tavern_events.MESSAGE_UPDATED) {
         eventOn(tavern_events.MESSAGE_UPDATED, (message_id) => {
             scheduleCheck(message_id, 'updated_settled');
+        });
+    }
+    if (tavern_events.CHARACTER_MESSAGE_RENDERED) {
+        eventOn(tavern_events.CHARACTER_MESSAGE_RENDERED, (message_id) => {
+            scheduleCheck(message_id, 'char_rendered');
+        });
+    }
+    if (typeof iframe_events !== 'undefined' && iframe_events.GENERATION_ENDED) {
+        eventOn(iframe_events.GENERATION_ENDED, () => {
+            setGenerationActive(false);
+            scheduleLastAssistantCheck('js_generation_ended');
         });
     }
 }
@@ -419,7 +443,7 @@ function bindStopDetector() {
         if (e.key === 'Escape')
             markUserStopped('escape');
     }, true);
-    ['GENERATION_STOPPED', 'GENERATION_INTERRUPTED', 'GENERATION_ABORTED'].forEach(name => {
+    ['GENERATION_INTERRUPTED', 'GENERATION_ABORTED'].forEach(name => {
         if (tavern_events[name])
             eventOn(tavern_events[name], () => markUserStopped(name));
     });
@@ -436,8 +460,8 @@ function fetchAssistantMessage(message_id) {
     return isAssistantMessage(msg) ? msg : undefined;
 }
 async function readAssistantBody(message_id, trigger) {
-    const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
-    const attempts = settled ? 3 : 1;
+    const settled = isSettledTrigger(trigger);
+    const attempts = settled ? 5 : 1;
     for (let i = 0; i < attempts; i++) {
         const msg = fetchAssistantMessage(message_id);
         if (!msg)
@@ -446,7 +470,7 @@ async function readAssistantBody(message_id, trigger) {
         if (body.length > 0 || i === attempts - 1)
             return { msg, body };
         if (settled)
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 150));
     }
     return null;
 }
@@ -455,7 +479,7 @@ async function checkAndNotify(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     if (shouldSkipUserStop(trigger) || !s.enabled || !s.barkKey.trim())
         return;
-    const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
+    const settled = isSettledTrigger(trigger);
     if (generationActive && !settled) {
         scheduleCheck(id, 'wait_gen');
         return;
@@ -496,27 +520,41 @@ async function checkAndNotify(message_id, trigger) {
         console.error('[Bark通知] 检测出错:', err);
     }
 }
+function isSettledTrigger(trigger) {
+    return (trigger.includes('generation_ended') ||
+        trigger.includes('generation_stopped') ||
+        trigger.includes('js_generation_ended') ||
+        trigger.includes('generation_timeout') ||
+        trigger.includes('char_rendered') ||
+        trigger.includes('updated_settled'));
+}
+function isFinalizeTrigger(trigger) {
+    return (trigger.includes('generation_ended') ||
+        trigger.includes('generation_stopped') ||
+        trigger.includes('js_generation_ended') ||
+        trigger.includes('generation_timeout') ||
+        trigger.includes('char_rendered'));
+}
 function scheduleCheck(message_id, trigger) {
     const id = normalizeMessageId(message_id);
     if (/^received:(swipe|append)$/i.test(trigger))
         return;
-    const settled = trigger.includes('generation_ended') || trigger.includes('updated_settled');
-    if (trigger.includes('generation_ended')) {
-        if (checkTimers.has(id)) {
-            clearTimeout(checkTimers.get(id));
-            checkTimers.delete(id);
-        }
+    const settled = isSettledTrigger(trigger);
+    const finalize = isFinalizeTrigger(trigger);
+    if (finalize && checkTimers.has(id)) {
+        clearTimeout(checkTimers.get(id));
+        checkTimers.delete(id);
     }
-    // 流式 MESSAGE_UPDATED 不重置定时器，避免拖到十几秒
-    if (settled && checkTimers.has(id))
+    // 流式 MESSAGE_UPDATED 不重置定时器；生成结束类事件必须能再调度一次
+    if (settled && !finalize && checkTimers.has(id))
         return;
     if (checkTimers.has(id))
         clearTimeout(checkTimers.get(id));
-    const delay = trigger.includes('generation_ended')
-        ? 500
+    const delay = finalize
+        ? 350
         : trigger.includes('updated_settled')
-            ? 800
-            : 600;
+            ? 600
+            : 500;
     checkTimers.set(id, setTimeout(() => {
         checkTimers.delete(id);
         void checkAndNotify(id, trigger);
