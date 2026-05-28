@@ -76,11 +76,11 @@ function glob_script_files() {
 }
 
 const barkDistDir = path.join(import.meta.dirname, 'src/酒馆助手/Bark空回通知');
-const barkBootstrapEntry = path.join(barkDistDir, 'boot.ts');
+const barkIndexEntry = path.join(barkDistDir, 'index.ts');
 
 const config: Config = {
   port: 6621,
-  entries: [...glob_script_files().map(parse_entry), { script: 'src/酒馆助手/Bark空回通知/boot.ts' }],
+  entries: [...glob_script_files().map(parse_entry), { script: 'src/酒馆助手/Bark空回通知/index.ts' }],
 };
 
 let io: Server;
@@ -195,7 +195,7 @@ function writeBarkVersionJson(): void {
 function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Configuration {
   const scriptPath = entry.script.replace(/\\/g, '/');
   const isBarkLoader =
-    path.normalize(path.join(import.meta.dirname, entry.script)) === path.normalize(barkBootstrapEntry);
+    path.normalize(path.join(import.meta.dirname, entry.script)) === path.normalize(barkIndexEntry);
   const obfuscateSource = isBarkLoader ? path.join(barkDistDir, 'main.ts') : path.join(import.meta.dirname, entry.script);
   const should_obfuscate = fs.readFileSync(obfuscateSource, 'utf-8').includes('@obfuscate');
   const keep_readable_dist = scriptPath.includes('src/酒馆助手/');
@@ -211,7 +211,6 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     },
     entry: isBarkLoader
       ? {
-          boot: path.join(barkDistDir, 'boot.ts'),
           index: path.join(barkDistDir, 'index.ts'),
           main: path.join(barkDistDir, 'main.ts'),
         }

@@ -2,8 +2,8 @@ export const REPO = 'triishiu/st-bark-notify';
 
 export const GIT_BRANCH = 'main';
 
-/** jsDelivr 官方 CDN */
-export const CDN_HOST = 'cdn.jsdelivr.net';
+/** testingcf CDN */
+export const CDN_HOST = 'testingcf.jsdelivr.net';
 
 /** 控制台可见，用于确认是否加载到最新脚本 */
 export const SCRIPT_VERSION = '2.3.30';

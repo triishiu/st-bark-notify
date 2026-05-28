@@ -2,8 +2,8 @@
 ;// ./src/酒馆助手/Bark空回通知/constants.ts
 const REPO = 'triishiu/st-bark-notify';
 const GIT_BRANCH = 'main';
-/** jsDelivr 官方 CDN */
-const CDN_HOST = 'cdn.jsdelivr.net';
+/** testingcf CDN */
+const CDN_HOST = 'testingcf.jsdelivr.net';
 /** 控制台可见，用于确认是否加载到最新脚本 */
 const SCRIPT_VERSION = '2.3.30';
 const PANEL_ID = 'bark-notify-ext-settings';
