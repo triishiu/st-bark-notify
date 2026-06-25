@@ -7,10 +7,14 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "dump": "node dump_schema.ts",
+<<<<<<< HEAD
     "sync": "node tavern_sync.mjs",
     "gen:import": "node scripts/gen-import-json.mjs",
     "postbuild": "node scripts/write-version-json.mjs && pnpm run gen:import",
     "purge:cdn": "node scripts/purge-jsdelivr.mjs"
+=======
+    "sync": "node tavern_sync.mjs"
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   },
   "browserslist": [
     "defaults and partially supports es6-module"
