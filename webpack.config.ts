@@ -55,7 +55,10 @@ function glob_script_files() {
     .filter(
       file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
     )
+<<<<<<< HEAD
     .filter(file => !file.replace(/\\/g, '/').startsWith('src/酒馆助手/Bark空回通知/'))
+=======
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
     .forEach(file => {
       const file_dirname = path.dirname(file);
       for (const [index, result] of results.entries()) {
@@ -75,12 +78,18 @@ function glob_script_files() {
   return results;
 }
 
+<<<<<<< HEAD
 const barkDistDir = path.join(import.meta.dirname, 'src/酒馆助手/Bark空回通知');
 const barkIndexEntry = path.join(barkDistDir, 'index.ts');
 
 const config: Config = {
   port: 6621,
   entries: [...glob_script_files().map(parse_entry), { script: 'src/酒馆助手/Bark空回通知/index.ts' }],
+=======
+const config: Config = {
+  port: 6621,
+  entries: glob_script_files().map(parse_entry),
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
 };
 
 let io: Server;
@@ -186,6 +195,7 @@ function tavern_sync(compiler: webpack.Compiler) {
   });
 }
 
+<<<<<<< HEAD
 function writeBarkVersionJson(): void {
   exec('node scripts/write-version-json.mjs', { cwd: import.meta.dirname }, err => {
     if (err) console.error('\x1b[31m[version.json]\x1b[0m', err.message);
@@ -199,6 +209,12 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
   const obfuscateSource = isBarkLoader ? path.join(barkDistDir, 'main.ts') : path.join(import.meta.dirname, entry.script);
   const should_obfuscate = fs.readFileSync(obfuscateSource, 'utf-8').includes('@obfuscate');
   const keep_readable_dist = scriptPath.includes('src/酒馆助手/');
+=======
+function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Configuration {
+  const should_obfuscate = fs
+    .readFileSync(path.join(import.meta.dirname, entry.script), 'utf-8')
+    .includes('@obfuscate');
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
   const script_filepath = path.parse(entry.script);
 
   return (_env, argv) => ({
@@ -209,12 +225,16 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
     watchOptions: {
       ignored: ['**/dist', '**/node_modules'],
     },
+<<<<<<< HEAD
     entry: isBarkLoader
       ? {
           index: path.join(barkDistDir, 'index.ts'),
           main: path.join(barkDistDir, 'main.ts'),
         }
       : path.join(import.meta.dirname, entry.script),
+=======
+    entry: path.join(import.meta.dirname, entry.script),
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
     target: 'browserslist',
     output: {
       devtoolNamespace: 'tavern_helper_template',
@@ -228,13 +248,21 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
         return `${is_direct === true ? 'src' : 'webpack'}://${info.namespace}/${resource_path}${is_direct || is_vue_script ? '' : '?' + info.hash}`;
       },
+<<<<<<< HEAD
       filename: isBarkLoader ? '[name].js' : `${script_filepath.name}.js`,
+=======
+      filename: `${script_filepath.name}.js`,
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
       path: path.join(
         import.meta.dirname,
         'dist',
         path.relative(import.meta.dirname, script_filepath.dir).replace(/^[^\\/]+[\\/]/, ''),
       ),
+<<<<<<< HEAD
       chunkFilename: isBarkLoader ? '[name].[contenthash].chunk.js' : `${script_filepath.name}.[contenthash].chunk.js`,
+=======
+      chunkFilename: `${script_filepath.name}.[contenthash].chunk.js`,
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
       asyncChunks: true,
       clean: true,
       publicPath: '',
@@ -499,6 +527,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               }),
             ]
           : [],
+<<<<<<< HEAD
       )
       .concat(
         isBarkLoader
@@ -513,6 +542,11 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       ),
     optimization: {
       minimize: argv.mode === 'production' && !keep_readable_dist,
+=======
+      ),
+    optimization: {
+      minimize: true,
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
       minimizer: [
         argv.mode === 'production'
           ? new TerserPlugin({
@@ -590,9 +624,23 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       const cdn = {
         sass: 'https://jspm.dev/sass',
       };
+<<<<<<< HEAD
       return callback(
         null,
         'module-import ' + (cdn[request as keyof typeof cdn] ?? `https://testingcf.jsdelivr.net/npm/${request}/+esm`),
+=======
+      const package_json = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'package.json'), 'utf-8')) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const package_versions = { ...package_json.devDependencies, ...package_json.dependencies };
+      const version = package_versions[request]?.replace(/^[~^]/, '');
+      const versioned_request = /^[.\d]+$/.test(version) ? `${request}@${version}` : request;
+      return callback(
+        null,
+        'module-import ' +
+          (cdn[request as keyof typeof cdn] ?? `https://testingcf.jsdelivr.net/npm/${versioned_request}/+esm`),
+>>>>>>> b6c722413d8cfdaf014bbb3f87518fd8c19754be
       );
     },
   });
