@@ -11,6 +11,9 @@ pnpm-debug.log*
 
 auto-imports.d.ts
 components.d.ts
+<<<<<<< HEAD
 
 # 本地调试 launch 等个人配置不提交
 .vscode/launch.json
+=======
+>>>>>>> c27dc311feeca88f575184c70cd539091ffeaf47
